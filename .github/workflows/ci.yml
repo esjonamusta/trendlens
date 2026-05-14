@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feat/**"
+      - "fix/**"
+      - "chore/**"
+      - "docs/**"
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Check imports
+        env:
+          LLM_PROVIDER: anthropic
+          ANTHROPIC_API_KEY: placeholder
+        run: python -c "from app.core.config import settings; from app.api.routes import router; print('Imports OK')"
+
+      - name: Test
+        env:
+          LLM_PROVIDER: anthropic
+          ANTHROPIC_API_KEY: placeholder
+        run: pytest tests/ --tb=short -q

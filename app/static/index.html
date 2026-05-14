@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrendLens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #08080d;
+      --surface: #0f0f17;
+      --srf2:    #16161f;
+      --border:  rgba(255,255,255,0.07);
+      --brd2:    rgba(255,255,255,0.12);
+      --text:    #f4f4f8;
+      --text2:   #b8b8cc;
+      --text3:   #7878a0;
+      --accent:  #7c5cfc;
+      --green:   #22c55e;
+      --amber:   #f59e0b;
+      --red:     #ef4444;
+      --r:       12px;
+    }
+
+    body { font-family: "Inter", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+
+    header {
+      padding: 16px 32px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(8,8,13,0.9); backdrop-filter: blur(16px);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .logo-icon { width: 28px; height: 28px; border-radius: 7px; background: linear-gradient(135deg, #7c5cfc, #4f46e5); display: flex; align-items: center; justify-content: center; font-size: 13px; }
+    .logo-text { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+
+    /* ── Hero ── */
+    .hero { max-width: 580px; margin: 56px auto 0; padding: 0 24px; text-align: center; }
+    .hero h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 800; letter-spacing: -1.2px; line-height: 1.1; margin-bottom: 12px; background: linear-gradient(180deg,#fff 0%,rgba(255,255,255,0.5) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero p { font-size: 15px; color: var(--text2); margin-bottom: 32px; line-height: 1.6; }
+
+    /* ── Form ── */
+    .form { max-width: 540px; margin: 0 auto; }
+
+    .main-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .main-row input { flex: 1; background: var(--surface); border: 1px solid var(--brd2); border-radius: var(--r); padding: 14px 18px; font-size: 15px; font-family: inherit; color: var(--text); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+    .main-row input::placeholder { color: var(--text3); }
+    .main-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,92,252,0.15); }
+    .main-row button { background: linear-gradient(135deg, #7c5cfc, #4f46e5); color: #fff; border: none; border-radius: var(--r); padding: 14px 22px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; transition: opacity 0.2s, transform 0.1s; }
+    .main-row button:hover { opacity: 0.88; }
+    .main-row button:active { transform: scale(0.97); }
+    .main-row button:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    /* Optional fields toggle */
+    .optional-toggle { font-size: 12px; color: var(--text3); background: none; border: none; font-family: inherit; cursor: pointer; margin-bottom: 10px; padding: 0; display: block; }
+    .optional-toggle:hover { color: var(--text2); }
+
+    .optional-fields { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 10px; }
+    .optional-fields.open { display: block; }
+
+    .opt-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+    .opt-row:last-child { margin-bottom: 0; }
+    .opt-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+    .opt-field input { width: 100%; background: var(--srf2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13px; font-family: inherit; color: var(--text); outline: none; transition: border-color 0.2s; }
+    .opt-field input::placeholder { color: var(--text3); }
+    .opt-field input:focus { border-color: var(--accent); }
+
+    /* Chips */
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 14px; }
+    .chip { font-size: 12px; color: var(--text2); background: var(--surface); border: 1px solid var(--border); border-radius: 99px; padding: 4px 12px; cursor: pointer; font-family: inherit; transition: border-color 0.15s, color 0.15s; }
+    .chip:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── Content ── */
+    .content { max-width: 580px; margin: 0 auto; padding: 0 24px 80px; }
+
+    #error { display: none; margin-top: 24px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: var(--r); padding: 14px 18px; color: #ef4444; font-size: 14px; }
+
+    /* Loading */
+    #loading { display: none; margin-top: 48px; }
+    .loading-inner { max-width: 320px; margin: 0 auto; }
+    .loading-title { font-size: 13px; font-weight: 600; color: var(--text3); text-align: center; margin-bottom: 20px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+    .steps { display: flex; flex-direction: column; gap: 10px; }
+    .step { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); transition: border-color 0.3s, opacity 0.4s; opacity: 0.35; }
+    .step.active { opacity: 1; border-color: rgba(124,92,252,0.35); }
+    .step.done { opacity: 1; border-color: rgba(34,197,94,0.2); }
+
+    .step-icon { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+    .step.pending .step-icon { background: var(--srf2); border: 1px solid var(--border); }
+    .step.active .step-icon { background: rgba(124,92,252,0.15); border: 1px solid rgba(124,92,252,0.4); animation: pulse-icon 1.4s ease-in-out infinite; }
+    .step.done .step-icon { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+    @keyframes pulse-icon { 0%,100% { box-shadow: 0 0 0 0 rgba(124,92,252,0.35); } 50% { box-shadow: 0 0 0 5px rgba(124,92,252,0); } }
+
+    .step-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); }
+    .step.active .step-dot { background: var(--accent); animation: blink 1.2s ease-in-out infinite; }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .step-text { font-size: 13px; color: var(--text2); flex: 1; line-height: 1.3; }
+    .step.active .step-text { color: var(--text); font-weight: 500; }
+    .step.done .step-text { color: var(--text2); }
+    .step-time { font-size: 11px; color: var(--text3); flex-shrink: 0; }
+
+    /* ── Results ── */
+    #results { margin-top: 48px; display: none; animation: fadeUp 0.3s ease; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .results-domain { font-size: 13px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; }
+    .copy-btn { font-size: 12px; color: var(--text3); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-family: inherit; transition: border-color 0.15s, color 0.15s; }
+    .copy-btn:hover { border-color: var(--brd2); color: var(--text2); }
+
+    /* News item card */
+    .news-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 22px; margin-bottom: 12px; transition: border-color 0.2s; }
+    .news-item:hover { border-color: var(--brd2); }
+
+    .item-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .item-num { font-size: 11px; font-weight: 700; color: var(--text3); background: var(--srf2); border: 1px solid var(--border); border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .item-headline { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.2px; line-height: 1.4; flex: 1; }
+    .conf-badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 99px; flex-shrink: 0; }
+    .conf-High { background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
+    .conf-Medium { background: rgba(245,158,11,0.1); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }
+    .conf-Low { background: rgba(239,68,68,0.08); color: #ef4444; border: 1px solid rgba(239,68,68,0.15); }
+
+    .item-body { font-size: 14px; line-height: 1.7; color: var(--text2); margin-bottom: 12px; }
+
+    .item-section { margin-bottom: 10px; }
+    .item-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 5px; }
+    .item-text { font-size: 13px; line-height: 1.6; color: var(--text2); }
+
+    .evidence-list { list-style: none; }
+    .evidence-list li { font-size: 13px; color: var(--text2); padding: 4px 0 4px 14px; position: relative; line-height: 1.5; }
+    .evidence-list li::before { content: ""; position: absolute; left: 0; top: 10px; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); opacity: 0.5; }
+    .evidence-link { color: var(--text2); text-decoration: none; border-bottom: 1px solid rgba(124,92,252,0.3); transition: color 0.15s, border-color 0.15s; }
+    .evidence-link:hover { color: var(--accent); border-color: var(--accent); }
+
+    .pm-action { background: rgba(124,92,252,0.07); border: 1px solid rgba(124,92,252,0.15); border-radius: 8px; padding: 12px 14px; font-size: 13px; color: var(--text); font-weight: 500; margin-top: 14px; line-height: 1.5; }
+    .pm-action::before { content: "→ "; color: var(--accent); font-weight: 700; }
+
+    .source-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .source-link { font-size: 11px; color: var(--text3); background: var(--srf2); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; text-decoration: none; white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; transition: border-color 0.15s, color 0.15s; }
+    .source-link:hover { border-color: var(--accent); color: var(--text2); }
+
+    .item-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; gap: 12px; }
+    .source-types { display: flex; gap: 5px; flex-wrap: wrap; }
+    .source-type-tag { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 7px; border-radius: 4px; }
+    .src-podcast { background: rgba(167,139,250,0.12); color: #a78bfa; border: 1px solid rgba(167,139,250,0.25); }
+    .src-reddit  { background: rgba(249,115,22,0.10);  color: #fb923c; border: 1px solid rgba(249,115,22,0.2); }
+    .src-web     { background: rgba(34,211,238,0.08);  color: #67e8f9; border: 1px solid rgba(34,211,238,0.2); }
+
+    .feedback-btn { font-size: 11px; color: var(--text3); background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 4px; font-family: inherit; transition: color 0.15s, background 0.15s; display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0; }
+    .feedback-btn:hover { background: rgba(239,68,68,0.08); color: #ef4444; }
+    .feedback-btn.marked { color: #ef4444; cursor: default; }
+
+    .score-breakdown { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .score-part { font-size: 10px; color: var(--text3); background: var(--srf2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; }
+    .score-part.pos { color: var(--green); }
+    .score-part.neg { color: var(--red); }
+
+    /* ── Delta section ── */
+    .delta-section { margin-bottom: 32px; }
+    .delta-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .delta-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); }
+    .delta-meta { font-size: 12px; color: var(--text3); }
+
+    .delta-baseline { background: rgba(124,92,252,0.06); border: 1px solid rgba(124,92,252,0.18); border-radius: var(--r); padding: 14px 18px; font-size: 13px; color: var(--text2); margin-bottom: 32px; }
+    .delta-baseline strong { color: var(--text); }
+
+    .delta-item { display: flex; align-items: flex-start; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px 18px; margin-bottom: 8px; transition: border-color 0.2s; }
+    .delta-item:hover { border-color: var(--brd2); }
+
+    .delta-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
+    .badge-new      { background: rgba(124,92,252,0.12); color: #a78bfa; border: 1px solid rgba(124,92,252,0.25); }
+    .badge-spiking  { background: rgba(34,197,94,0.10);  color: #22c55e; border: 1px solid rgba(34,197,94,0.25); }
+    .badge-declining{ background: rgba(239,68,68,0.08);  color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
+    .badge-stable   { background: rgba(245,158,11,0.08); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }
+    .badge-weak     { background: rgba(148,163,184,0.08);color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+
+    .delta-body { flex: 1; min-width: 0; }
+    .delta-topic { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; line-height: 1.4; }
+    .delta-reason { font-size: 12px; color: var(--text2); line-height: 1.5; }
+    .delta-stats { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+    .delta-stat { font-size: 11px; color: var(--text3); background: var(--srf2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; }
+    .delta-stat.up   { color: var(--green); }
+    .delta-stat.down { color: var(--red); }
+
+    .disappeared-section { margin-top: 12px; padding: 10px 14px; background: rgba(239,68,68,0.04); border: 1px solid rgba(239,68,68,0.12); border-radius: 8px; }
+    .disappeared-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #ef4444; margin-bottom: 6px; }
+    .disappeared-list { font-size: 12px; color: var(--text3); line-height: 1.6; }
+
+    /* Unverified badge */
+    .unverified-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 99px; background: rgba(239,68,68,0.08); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); flex-shrink: 0; margin-top: 3px; cursor: default; }
+
+    /* Search sources panel */
+    .sources-panel { margin-top: 32px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+    .sources-panel summary { font-size: 12px; font-weight: 600; color: var(--text3); padding: 12px 18px; cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; user-select: none; }
+    .sources-panel summary::-webkit-details-marker { display: none; }
+    .sources-panel summary::before { content: "▶"; font-size: 9px; transition: transform 0.2s; }
+    .sources-panel[open] summary::before { transform: rotate(90deg); }
+    .sources-panel summary:hover { color: var(--text2); }
+    .sources-panel-body { padding: 0 18px 14px; border-top: 1px solid var(--border); }
+    .sources-panel-body p { font-size: 11px; color: var(--text3); margin: 10px 0 8px; }
+    .sources-group { margin-bottom: 12px; }
+    .sources-group:last-child { margin-bottom: 0; }
+    .sources-group-label { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .sources-grid { display: flex; flex-direction: column; gap: 3px; }
+    .sources-grid a { font-size: 12px; color: var(--text3); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 0; transition: color 0.15s; }
+    .sources-grid a:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">◈</div>
+  <span class="logo-text">TrendLens</span>
+</header>
+
+<div class="hero">
+  <h1>3 things your domain<br>is talking about</h1>
+  <p>Enter a domain and get the top 3 news items from podcasts, Reddit, and the web — ranked by what matters for PMs.</p>
+
+  <div class="form">
+    <div class="main-row">
+      <input id="domain" type="text" placeholder="e.g. developer experience, fintech compliance…" />
+      <button id="runBtn" onclick="run()">Research →</button>
+    </div>
+
+    <button class="optional-toggle" onclick="toggleOptional()" id="optToggle">+ Add context (competitors, users, market)</button>
+
+    <div class="optional-fields" id="optFields">
+      <div class="opt-row">
+        <div class="opt-field">
+          <label>Competitors</label>
+          <input id="competitors" type="text" placeholder="Stripe, Plaid, …" />
+        </div>
+        <div class="opt-field">
+          <label>Target users</label>
+          <input id="targetUsers" type="text" placeholder="compliance teams" />
+        </div>
+      </div>
+      <div class="opt-row">
+        <div class="opt-field">
+          <label>Geographic market</label>
+          <input id="market" type="text" placeholder="Europe, US, …" />
+        </div>
+        <div class="opt-field">
+          <label>Time window (days)</label>
+          <input id="days" type="number" value="7" min="1" max="90" />
+        </div>
+      </div>
+      <div class="opt-row">
+        <div class="opt-field">
+          <label>Number of items (3–10)</label>
+          <input id="maxItems" type="number" value="3" min="3" max="10" />
+        </div>
+      </div>
+    </div>
+
+    <div class="chips">
+      <button class="chip" onclick="fill('developer experience')">developer experience</button>
+      <button class="chip" onclick="fill('AI coding tools')">AI coding tools</button>
+      <button class="chip" onclick="fill('fintech compliance')">fintech compliance</button>
+      <button class="chip" onclick="fill('B2B SaaS analytics')">B2B SaaS analytics</button>
+      <button class="chip" onclick="fill('gaming communities')">gaming communities</button>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <div id="error"></div>
+
+  <div id="loading">
+    <div class="loading-inner">
+      <div class="loading-title">Working on it…</div>
+      <div class="steps" id="steps">
+        <div class="step pending" id="step-0">
+          <div class="step-icon"><div class="step-dot"></div></div>
+          <span class="step-text">Analysing domain</span>
+          <span class="step-time" id="step-0-time"></span>
+        </div>
+        <div class="step pending" id="step-1">
+          <div class="step-icon"><div class="step-dot"></div></div>
+          <span class="step-text">Discovering sources — podcasts &amp; subreddits</span>
+          <span class="step-time" id="step-1-time"></span>
+        </div>
+        <div class="step pending" id="step-2">
+          <div class="step-icon"><div class="step-dot"></div></div>
+          <span class="step-text">Scanning podcasts, Reddit &amp; web</span>
+          <span class="step-time" id="step-2-time"></span>
+        </div>
+        <div class="step pending" id="step-3">
+          <div class="step-icon"><div class="step-dot"></div></div>
+          <span class="step-text">Ranking signals by PM relevance</span>
+          <span class="step-time" id="step-3-time"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="results"></div>
+</div>
+
+<script>
+  document.getElementById("domain").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
+
+  function fill(text) {
+    document.getElementById("domain").value = text;
+    document.getElementById("domain").focus();
+  }
+
+  function toggleOptional() {
+    const el = document.getElementById("optFields");
+    const btn = document.getElementById("optToggle");
+    const open = el.classList.toggle("open");
+    btn.textContent = open ? "− Hide options" : "+ Add context (competitors, users, market)";
+  }
+
+  function buildConfig() {
+    const competitors = document.getElementById("competitors").value.trim()
+      .split(",").map(s => s.trim()).filter(Boolean);
+    return {
+      domain: document.getElementById("domain").value.trim(),
+      competitors,
+      target_users: document.getElementById("targetUsers").value.trim(),
+      geographic_market: document.getElementById("market").value.trim(),
+      time_window_days: parseInt(document.getElementById("days").value) || 7,
+      max_items: parseInt(document.getElementById("maxItems").value) || 3,
+    };
+  }
+
+  function confBadge(conf) {
+    return `<span class="conf-badge conf-${conf}">${conf}</span>`;
+  }
+
+  function evidenceList(items) {
+    if (!items?.length) return "";
+    return `<ul class="evidence-list">${items.map(e => {
+      const text = typeof e === "string" ? e : e.text;
+      const url  = typeof e === "string" ? "" : e.url;
+      return url
+        ? `<li><a href="${url}" target="_blank" rel="noopener noreferrer" class="evidence-link">${text}</a></li>`
+        : `<li>${text}</li>`;
+    }).join("")}</ul>`;
+  }
+
+  const _BADGE_CLASS = {
+    "NEW THIS RUN":        "badge-new",
+    "SPIKING VS LAST RUN": "badge-spiking",
+    "DECLINING":           "badge-declining",
+    "STABLE BUT IMPORTANT":"badge-stable",
+    "WEAK SIGNAL TO WATCH":"badge-weak",
+  };
+
+  function renderDelta(report) {
+    if (report.is_baseline) {
+      return `<div class="delta-baseline">
+        <strong>No prior history for this domain</strong> — this run is saved as your baseline.
+        Run again later and you'll see what changed.
+      </div>`;
+    }
+    if (report.delta_unavailable_reason) {
+      return `<div class="delta-baseline">${report.delta_unavailable_reason}</div>`;
+    }
+    if (!report.delta) return "";
+
+    const d = report.delta;
+    const daysLabel = d.days_apart < 1
+      ? "earlier today"
+      : d.days_apart < 2
+        ? "yesterday"
+        : `${d.days_apart.toFixed(1)} days ago`;
+
+    const insights = d.insights.map(ins => {
+      const badgeClass = _BADGE_CLASS[ins.classification] || "badge-stable";
+      const stats = [];
+      if (ins.rank_delta !== null && ins.rank_delta !== undefined) {
+        const dir = ins.rank_delta > 0 ? "up" : ins.rank_delta < 0 ? "down" : "";
+        const arrow = ins.rank_delta > 0 ? "↑" : ins.rank_delta < 0 ? "↓" : "–";
+        stats.push(`<span class="delta-stat ${dir}">${arrow} rank ${ins.previous_rank}→${ins.current_rank}</span>`);
+      }
+      if (ins.source_count_delta !== null && ins.source_count_delta !== undefined) {
+        const dir = ins.source_count_delta > 0 ? "up" : ins.source_count_delta < 0 ? "down" : "";
+        const sign = ins.source_count_delta > 0 ? "+" : "";
+        stats.push(`<span class="delta-stat ${dir}">${sign}${ins.source_count_delta} sources</span>`);
+      }
+      let breakdown = "";
+      if (ins.score_breakdown) {
+        const b = ins.score_breakdown;
+        const parts = [
+          { label: "sources", val: b.source_count_contribution },
+          { label: "rank",    val: b.rank_contribution },
+          { label: "conf",    val: b.confidence_contribution },
+          { label: "diversity", val: b.diversity_contribution },
+        ].filter(p => p.val !== 0).map(p => {
+          const sign = p.val > 0 ? "+" : "";
+          const cls = p.val > 0 ? "pos" : "neg";
+          return `<span class="score-part ${cls}">${p.label} ${sign}${p.val.toFixed(2)}</span>`;
+        });
+        if (parts.length) breakdown = `<div class="score-breakdown">${parts.join("")}</div>`;
+      }
+      return `
+        <div class="delta-item">
+          <span class="delta-badge ${badgeClass}">${ins.classification}</span>
+          <div class="delta-body">
+            <div class="delta-topic">${ins.topic}</div>
+            <div class="delta-reason">${ins.reason}</div>
+            ${stats.length ? `<div class="delta-stats">${stats.join("")}</div>` : ""}
+            ${breakdown}
+          </div>
+        </div>`;
+    }).join("");
+
+    const disappeared = d.disappeared.length
+      ? `<div class="disappeared-section">
+          <div class="disappeared-label">Disappeared since last run</div>
+          <div class="disappeared-list">${d.disappeared.map(h => `· ${h}`).join("<br>")}</div>
+        </div>`
+      : "";
+
+    return `
+      <div class="delta-section">
+        <div class="delta-header">
+          <span class="delta-title">What changed?</span>
+          <span class="delta-meta">vs. ${daysLabel}</span>
+        </div>
+        ${insights}
+        ${disappeared}
+      </div>`;
+  }
+
+  let _currentRunId = "";
+  let _currentDomain = "";
+
+  function renderSourcesPanel(_sources) {
+    return "";
+  }
+
+  function sourceTypeTags(item) {
+    const tags = [];
+    if (item.podcast_evidence?.length) tags.push(`<span class="source-type-tag src-podcast">podcast</span>`);
+    if (item.reddit_evidence?.length)  tags.push(`<span class="source-type-tag src-reddit">reddit</span>`);
+    if (item.source_links?.length)     tags.push(`<span class="source-type-tag src-web">web</span>`);
+    return tags.length ? `<div class="source-types">${tags.join("")}</div>` : "";
+  }
+
+  async function markIncorrect(btn, headline) {
+    if (btn.classList.contains("marked")) return;
+    try {
+      await fetch("/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ run_id: _currentRunId, domain: _currentDomain, item_headline: headline, feedback_type: "incorrect" }),
+      });
+      btn.classList.add("marked");
+      btn.textContent = "✗ marked incorrect";
+      btn.onclick = null;
+    } catch { btn.textContent = "failed"; }
+  }
+
+  function render(report) {
+    _currentRunId = report.run_id || "";
+    _currentDomain = report.config?.domain || "";
+    const cfg = report.config;
+    const meta = [cfg.domain];
+    if (cfg.geographic_market) meta.push(cfg.geographic_market);
+
+    const html = `
+      <div class="results-header">
+        <span class="results-domain">${meta.join(" · ")}</span>
+        <button class="copy-btn" onclick="copyMarkdown()">Copy as Markdown</button>
+      </div>
+      ${renderDelta(report)}
+      ${renderSourcesPanel(report.search_sources)}
+      ${report.items.map((item, i) => `
+        <div class="news-item">
+          <div class="item-header">
+            <span class="item-num">${i + 1}</span>
+            <span class="item-headline">${item.headline}</span>
+            ${item.grounded === false ? '<span class="unverified-badge" title="No source link matched the actual search results">UNVERIFIED</span>' : ""}
+            ${confBadge(item.confidence)}
+          </div>
+
+          <div class="item-body">${item.what_happened}</div>
+
+          <div class="item-section">
+            <div class="item-label">Why it matters</div>
+            <div class="item-text">${item.why_it_matters}</div>
+          </div>
+
+          ${item.podcast_evidence?.length ? `
+            <div class="item-section">
+              <div class="item-label">Podcast signals</div>
+              ${evidenceList(item.podcast_evidence)}
+            </div>` : ""}
+
+          ${item.reddit_evidence?.length ? `
+            <div class="item-section">
+              <div class="item-label">Reddit signals</div>
+              ${evidenceList(item.reddit_evidence)}
+            </div>` : ""}
+
+          ${item.source_links?.length ? `
+            <div class="source-links">
+              ${item.source_links.map(url => {
+                let label;
+                try { label = new URL(url).hostname.replace(/^www\./, ""); } catch { label = url; }
+                return `<a class="source-link" href="${url}" target="_blank" rel="noopener noreferrer" title="${url}">${label}</a>`;
+              }).join("")}
+            </div>` : ""}
+
+          <div class="pm-action">${item.pm_action}</div>
+
+          <div class="item-footer">
+            ${sourceTypeTags(item)}
+            <button class="feedback-btn" onclick="markIncorrect(this, ${JSON.stringify(item.headline)})">✗ mark incorrect</button>
+          </div>
+        </div>
+      `).join("")}
+    `;
+
+    document.getElementById("results").innerHTML = html;
+    document.getElementById("results").style.display = "block";
+  }
+
+  // Step timings (ms): when each step becomes "active" and when it's marked "done"
+  const STEP_SCHEDULE = [
+    { activeAt: 0,    doneAt: 2500  },  // 0: analysing domain
+    { activeAt: 2500, doneAt: 6000  },  // 1: discovering sources
+    { activeAt: 6000, doneAt: 16000 },  // 2: scanning sources (longest)
+    { activeAt: 16000, doneAt: null },  // 3: ranking (stays active until response)
+  ];
+
+  let _stepTimers = [];
+
+  function startSteps() {
+    const steps = document.querySelectorAll(".step");
+    steps.forEach(s => { s.className = "step pending"; s.querySelector(".step-icon").innerHTML = '<div class="step-dot"></div>'; });
+    document.querySelectorAll("[id^='step-'][id$='-time']").forEach(el => el.textContent = "");
+
+    _stepTimers.forEach(clearTimeout);
+    _stepTimers = [];
+    const t0 = Date.now();
+
+    STEP_SCHEDULE.forEach((sched, i) => {
+      _stepTimers.push(setTimeout(() => {
+        const el = document.getElementById(`step-${i}`);
+        el.className = "step active";
+        el.querySelector(".step-icon").innerHTML = '<div class="step-dot"></div>';
+      }, sched.activeAt));
+
+      if (sched.doneAt !== null) {
+        _stepTimers.push(setTimeout(() => {
+          const el = document.getElementById(`step-${i}`);
+          el.className = "step done";
+          el.querySelector(".step-icon").innerHTML = "✓";
+          document.getElementById(`step-${i}-time`).textContent = ((Date.now() - t0) / 1000).toFixed(1) + "s";
+        }, sched.doneAt));
+      }
+    });
+  }
+
+  function finishSteps() {
+    _stepTimers.forEach(clearTimeout);
+    _stepTimers = [];
+    const steps = document.querySelectorAll(".step");
+    steps.forEach((el, i) => {
+      if (!el.classList.contains("done")) {
+        el.className = "step done";
+        el.querySelector(".step-icon").innerHTML = "✓";
+      }
+    });
+  }
+
+  let lastDomain = "";
+
+  async function copyMarkdown() {
+    if (!lastDomain) return;
+    const config = buildConfig();
+    config.domain = lastDomain;
+    try {
+      const res = await fetch("/research/markdown", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(config),
+      });
+      const md = await res.text();
+      await navigator.clipboard.writeText(md);
+      const btn = document.querySelector(".copy-btn");
+      btn.textContent = "✓ Copied!";
+      setTimeout(() => btn.textContent = "Copy as Markdown", 2000);
+    } catch { alert("Copy failed."); }
+  }
+
+  async function run() {
+    const config = buildConfig();
+    if (!config.domain) return;
+
+    lastDomain = config.domain;
+    document.getElementById("error").style.display = "none";
+    document.getElementById("results").style.display = "none";
+    document.getElementById("loading").style.display = "block";
+    document.getElementById("runBtn").disabled = true;
+    startSteps();
+
+    try {
+      const res = await fetch("/research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(config),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      finishSteps();
+      render(await res.json());
+    } catch (err) {
+      finishSteps();
+      document.getElementById("error").textContent = "Something went wrong: " + err.message;
+      document.getElementById("error").style.display = "block";
+    } finally {
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("runBtn").disabled = false;
+    }
+  }
+</script>
+
+</body>
+</html>

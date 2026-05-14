@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      HISTORY_DB_PATH: /data/history.db
+    volumes:
+      - trendlens-data:/data
+    restart: unless-stopped
+
+volumes:
+  trendlens-data:

@@ -1,0 +1,21 @@
+name: Branch Name Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce branch naming convention
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          if [[ "$BRANCH" =~ ^(feat|fix|chore)/.+ ]]; then
+            echo "Branch name '$BRANCH' is valid."
+          else
+            echo "Invalid branch name: '$BRANCH'"
+            echo "Branch must start with feat/, fix/, or chore/"
+            echo "Examples: feat/add-search, fix/timeout-bug, chore/update-deps"
+            exit 1
+          fi

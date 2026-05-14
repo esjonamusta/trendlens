@@ -1,0 +1,13 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+history.db*
+.git/
+tests/
+*.md
+Makefile
+trendlens
+trendlens.pub
