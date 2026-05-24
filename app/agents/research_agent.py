@@ -1,13 +1,34 @@
 from __future__ import annotations
 
 import asyncio
-from urllib.parse import urlparse
 
 from app.core.config import settings
 from app.core.llm import llm_client
 from app.core.logger import get_logger
-from app.core.prompts import DISCOVERY_SYSTEM, DISCOVERY_USER, RANKING_SYSTEM, RANKING_USER, _EXCLUDED_SECTION_TEMPLATE
-from app.core.schemas import ResearchConfig, ResearchItemsList, ResearchReport, SearchSource, SourceDiscovery
+from app.core.prompts import (
+    DISCOVERY_SYSTEM,
+    DISCOVERY_USER,
+    SUMMARIZE_SYSTEM,
+    SUMMARIZE_USER,
+    _EXCLUDED_SECTION_TEMPLATE,
+)
+from app.core.schemas import (
+    EvidenceItem,
+    ResearchConfig,
+    ResearchItem,
+    ResearchReport,
+    SearchSource,
+    SourceDiscovery,
+    TrendSummaryList,
+    TrendSummaryText,
+)
+from app.services.normalizer import extract_keywords, topic_similarity
+from app.services.trend_engine import (
+    TrendCluster,
+    cluster_search_results,
+    confidence_for_cluster,
+    rank_clusters,
+)
 from app.services.web_search import QueryResults
 from app.sources.podcasts import fetch_podcast_signals
 from app.sources.reddit import fetch_reddit_signals
@@ -15,30 +36,10 @@ from app.sources.web import fetch_web_signals
 
 log = get_logger(__name__)
 
-# Extra items fetched beyond max_items so the delta engine has a wider pool to
-# match against. Topics that fall from rank 3 to rank 5 won't show as DISAPPEARED.
+# Extra clusters summarized beyond max_items so the delta engine has a wider
+# pool to match against on the next run. Topics that slip from rank 3 to rank 5
+# won't show as DISAPPEARED just because they fell out of the display window.
 _DELTA_BUFFER = 4
-
-
-def _host(url: str) -> str:
-    try:
-        return urlparse(url).hostname or ""
-    except Exception:
-        return ""
-
-
-def _format_results(results: list[QueryResults], label: str) -> str:
-    lines = [f"=== {label.upper()} ==="]
-    for qr in results:
-        if not qr.results:
-            continue
-        lines.append(f'Query: "{qr.query}"')
-        for r in qr.results:
-            lines.append(f"  - {r.title} ({r.url})")
-            if r.snippet:
-                lines.append(f"    {r.snippet.strip()}")
-    lines.append("")
-    return "\n".join(lines)
 
 
 def _deduplicate(results: list[QueryResults]) -> list[QueryResults]:
@@ -52,27 +53,56 @@ def _deduplicate(results: list[QueryResults]) -> list[QueryResults]:
     return out
 
 
+def _format_clusters_for_llm(clusters: list[TrendCluster]) -> str:
+    """Render pre-ranked clusters as a structured block for the summarization prompt."""
+    lines: list[str] = []
+    for i, cluster in enumerate(clusters, 1):
+        _, conf_label = confidence_for_cluster(cluster)
+        type_str = ", ".join(sorted(cluster.source_type_set))
+        lines.append(
+            f"CLUSTER {i} | {conf_label} confidence | "
+            f"{cluster.evidence_count} sources ({type_str})"
+        )
+        lines.append(f'Topic: "{cluster.canonical_topic}"')
+        if cluster.aliases:
+            lines.append("Related:")
+            for alias in cluster.aliases[:5]:
+                lines.append(f"  - {alias}")
+        lines.append("Evidence:")
+        for source in cluster.sources[:8]:
+            lines.append(f"  [{source.type}] {source.title} | {source.url}")
+            if source.snippet:
+                lines.append(f"    {source.snippet[:200]}")
+        lines.append("")
+    return "\n".join(lines)
+
+
 class ResearchAgent:
-    async def run(self, config: ResearchConfig, excluded_headlines: list[str] | None = None) -> ResearchReport:
+    async def run(
+        self,
+        config: ResearchConfig,
+        excluded_headlines: list[str] | None = None,
+    ) -> ResearchReport:
         log.info(f"ResearchAgent starting | domain='{config.domain}'")
 
-        # Step 1: discover relevant sources
+        # ── 1. Source discovery (Haiku — fast/cheap) ──────────────────────────
         discovery = await self._discover_sources(config)
-        log.info(f"Sources discovered | podcasts={discovery.podcasts} subreddits={discovery.subreddits}")
+        log.info(
+            f"Sources discovered | podcasts={discovery.podcasts} "
+            f"subreddits={discovery.subreddits}"
+        )
 
-        # Step 2: collect from all sources in parallel
+        # ── 2. Parallel fetch from all source types ───────────────────────────
         podcast_results, reddit_results, web_results = await asyncio.gather(
             fetch_podcast_signals(config, discovery.podcasts),
             fetch_reddit_signals(config, discovery.subreddits),
             fetch_web_signals(config),
         )
 
-        # Step 3: deduplicate and format all collected data
-        all_results = _deduplicate(podcast_results + reddit_results + web_results)
-
+        # ── 3. Deduplicate and collect typed SearchSource objects ─────────────
         def _collect(buckets: list, kind: str) -> list[SearchSource]:
             seen: set[str] = set()
-            out = []
+            out: list[SearchSource] = []
             for qr in _deduplicate(buckets):
                 for r in qr.results:
                     if r.url not in seen:
@@ -90,33 +120,67 @@ class ResearchAgent:
             + _collect(reddit_results, "reddit")
             + _collect(web_results, "web")
         )
-        known_hosts: set[str] = {_host(s.url) for s in search_sources if _host(s.url)}
-        search_data = (
-            _format_results(podcast_results, "Podcasts")
-            + _format_results(reddit_results, "Reddit")
-            + _format_results(web_results, "Web / News")
-        )
 
-        if not any(qr.results for qr in all_results):
-            log.warning("No search results found — falling back to LLM knowledge")
-            search_data = f"No live search data available. Use your knowledge of the '{config.domain}' domain."
-            search_sources = []
-            known_hosts = set()
+        if not search_sources:
+            log.warning("No search results — returning empty report")
+            return ResearchReport(config=config, items=[], generated_at="", search_sources=[])
 
-        # Step 4: rank and summarize — fetch extra items for wider delta matching pool
-        fetch_count = config.max_items + _DELTA_BUFFER
-        items_list = await self._rank_and_summarize(config, search_data, excluded_headlines, fetch_count)
+        # ── 4. Cluster search results deterministically — no LLM ─────────────
+        clusters = cluster_search_results(search_sources)
+        ranked = rank_clusters(clusters)
+        log.info(f"Clusters | total={len(ranked)} | domain='{config.domain}'")
 
-        # Grounding check: item is grounded if any cited URL's hostname appeared in search results
-        for item in items_list.items:
-            item.grounded = bool(known_hosts) and any(
-                _host(url) in known_hosts for url in item.source_links
+        # Deterministically filter clusters that overlap excluded headlines
+        if excluded_headlines:
+            excluded_kws = [extract_keywords(h) for h in excluded_headlines]
+            ranked = [
+                c for c in ranked
+                if not any(
+                    topic_similarity(c.keywords_set, ekws) >= 0.20
+                    for ekws in excluded_kws
+                )
+            ]
+
+        top = ranked[: config.max_items + _DELTA_BUFFER]
+        if not top:
+            log.warning("No clusters after exclusion filter")
+            return ResearchReport(config=config, items=[], generated_at="", search_sources=search_sources)
+
+        # ── 5. LLM writes text only — URLs and confidence already set ─────────
+        summaries = await self._summarize_trends(config, top, excluded_headlines)
+        if len(summaries) < len(top):
+            log.warning(
+                f"LLM returned {len(summaries)} summaries for {len(top)} clusters — "
+                "truncating to matched pairs"
             )
 
-        log.info(f"ResearchAgent done | items={len(items_list.items)}")
+        # ── 6. Combine cluster evidence (grounded) with LLM text ─────────────
+        # Grounding is guaranteed by construction: all URLs come from real search results.
+        items: list[ResearchItem] = []
+        for cluster, summary in zip(top, summaries):
+            _, conf_label = confidence_for_cluster(cluster)
+            items.append(ResearchItem(
+                headline=summary.headline,
+                what_happened=summary.what_happened,
+                why_it_matters=summary.why_it_matters,
+                pm_action=summary.pm_action,
+                podcast_evidence=[
+                    EvidenceItem(text=s.title, url=s.url)
+                    for s in cluster.sources if s.type == "podcast"
+                ],
+                reddit_evidence=[
+                    EvidenceItem(text=s.title, url=s.url)
+                    for s in cluster.sources if s.type == "reddit"
+                ],
+                source_links=[s.url for s in cluster.sources if s.type == "web"],
+                confidence=conf_label,
+                grounded=True,
+            ))
+
+        log.info(f"ResearchAgent done | items={len(items)}")
         return ResearchReport(
             config=config,
-            items=items_list.items,
+            items=items,
             generated_at="",
             search_sources=search_sources,
         )
@@ -136,37 +200,36 @@ class ResearchAgent:
             context_label="discovery",
         )
 
-    async def _rank_and_summarize(
+    async def _summarize_trends(
         self,
         config: ResearchConfig,
-        search_data: str,
+        clusters: list[TrendCluster],
         excluded_headlines: list[str] | None = None,
-        fetch_count: int | None = None,
-    ) -> ResearchItemsList:
-        count = fetch_count or config.max_items
+    ) -> list[TrendSummaryText]:
+        cluster_text = _format_clusters_for_llm(clusters)
         excluded_section = ""
         if excluded_headlines:
             formatted = "\n".join(f"- {h}" for h in excluded_headlines)
             excluded_section = _EXCLUDED_SECTION_TEMPLATE.format(headlines=formatted)
 
-        user_prompt = RANKING_USER.format(
+        user_prompt = SUMMARIZE_USER.format(
             domain=config.domain,
             competitors=", ".join(config.competitors) if config.competitors else "none",
             target_users=config.target_users or "not specified",
             geographic_market=config.geographic_market or "global",
-            time_window_days=config.time_window_days,
-            max_items=count,
-            search_data=search_data,
+            count=len(clusters),
             excluded_section=excluded_section,
+            cluster_text=cluster_text,
         )
-        return await llm_client.complete(
-            system_prompt=RANKING_SYSTEM,
+        result = await llm_client.complete(
+            system_prompt=SUMMARIZE_SYSTEM,
             user_prompt=user_prompt,
-            response_model=ResearchItemsList,
-            max_tokens=max(4000, 1500 * count),
-            temperature=0.3,
-            context_label="ranking",
+            response_model=TrendSummaryList,
+            max_tokens=max(2000, 400 * len(clusters)),
+            temperature=0.2,
+            context_label="summarize",
         )
+        return result.summaries
 
 
 research_agent = ResearchAgent()

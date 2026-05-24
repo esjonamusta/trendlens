@@ -113,6 +113,22 @@ class ResearchReportWithDelta(ResearchReport):
     delta_unavailable_reason: str = ""  # set when delta is suppressed (e.g. too soon)
 
 
+class TrendSummaryText(BaseModel):
+    """Text-only LLM output for a single trend cluster.
+
+    URLs and confidence labels are set deterministically from the cluster — the LLM
+    cannot generate or modify them because they are not fields in this schema.
+    """
+    headline: Annotated[str, Field(description="Short, specific, newsy headline — max 12 words.")]
+    what_happened: Annotated[str, Field(description="1-2 sentences of concrete facts from the evidence provided.")]
+    why_it_matters: Annotated[str, Field(description="1-2 sentences on why a PM in this space should care.")]
+    pm_action: Annotated[str, Field(description="One sentence starting with a verb — what should the PM do this week?")]
+
+
+class TrendSummaryList(BaseModel):
+    summaries: Annotated[list[TrendSummaryText], Field(min_length=1, max_length=10)]
+
+
 class FeedbackRequest(BaseModel):
     run_id: str
     domain: str
