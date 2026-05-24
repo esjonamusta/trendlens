@@ -77,10 +77,12 @@ def _build_reason(
     current: TopicSnapshot,
     previous: TopicSnapshot,
 ) -> str:
-    src_delta = current.source_count - previous.source_count
-    src_pct = round(src_delta / max(previous.source_count, 1) * 100)
+    cur_count = current.matched_url_count or current.source_count
+    prev_count = previous.matched_url_count or previous.source_count
+    src_delta = cur_count - prev_count
+    src_pct = round(src_delta / max(prev_count, 1) * 100)
     rank_str = f"rank {previous.rank} → {current.rank}"
-    src_str = f"{previous.source_count} → {current.source_count} sources"
+    src_str = f"{prev_count} → {cur_count} sources"
 
     if classification == "SPIKING VS LAST RUN":
         return (
@@ -211,10 +213,12 @@ def compute_delta(
             )
             classification = _classify(score, cur.confidence)
             reason = _build_reason(classification, cur, prev)
-            src_delta = cur.source_count - prev.source_count
+            cur_count = cur.matched_url_count or cur.source_count
+            prev_count = prev.matched_url_count or prev.source_count
+            src_delta = cur_count - prev_count
             evidence = [
                 f"Sources: {', '.join(cur.sources) if cur.sources else 'none'}",
-                f"Source count: {prev.source_count} → {cur.source_count} ({src_delta:+d})",
+                f"Source count: {prev_count} → {cur_count} ({src_delta:+d})",
             ]
             insights.append(DeltaInsight(
                 classification=classification,

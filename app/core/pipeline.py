@@ -46,9 +46,12 @@ def _cache_key(config: ResearchConfig) -> str:
     parts = [config.domain.strip().lower()]
     if config.competitors:
         parts.append(",".join(sorted(c.lower() for c in config.competitors)))
+    if config.target_users:
+        parts.append(config.target_users.lower())
     if config.geographic_market:
         parts.append(config.geographic_market.lower())
     parts.append(str(config.time_window_days))
+    parts.append(str(config.max_items))
     return "|".join(parts)
 
 
@@ -74,15 +77,16 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
     run_id = str(uuid.uuid4())
     domain_key = config.domain.strip().lower()
 
-    # Save ALL fetched items as snapshots (includes the delta buffer beyond max_items).
-    # This widens the matching pool so topics that drop a rank or two don't show as DISAPPEARED.
-    topics = [
+    # Save ALL fetched items (including delta buffer) so the matching pool is wider
+    # and topics that drop a rank or two don't show as DISAPPEARED next run.
+    all_topics = [
         item_to_topic_snapshot(item, rank=i + 1, search_sources=report.search_sources)
         for i, item in enumerate(report.items)
     ]
 
-    # Slice to max_items for display only — buffer items never reach the user.
+    # Only the items the user actually sees — buffer items must not appear in delta insights.
     display_items = report.items[: config.max_items]
+    display_topics = all_topics[: config.max_items]
 
     # Find the best previous snapshot (prefer ~7 days ago, fall back to most recent)
     previous = await asyncio.to_thread(
@@ -94,21 +98,18 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
     )
 
     delta = None
-    is_baseline = previous is None
     delta_unavailable_reason = ""
 
-    # If no eligible previous snapshot, check whether one exists but is just too recent
-    if previous is None and not is_baseline:
-        pass  # is_baseline already true — first ever run
     if previous is None:
         any_snapshots = await asyncio.to_thread(history_db.list_snapshots, domain_key, 1)
+        is_baseline = not any_snapshots
         if any_snapshots:
-            # Snapshots exist but all within the min gap
-            is_baseline = False
             delta_unavailable_reason = (
                 "Run again tomorrow — comparing runs from the same day shows "
                 "LLM variance, not real trend movement."
             )
+    else:
+        is_baseline = False
 
     if previous is not None:
         prev_topics = [TopicSnapshot(**t) for t in previous.topics]
@@ -116,7 +117,7 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
         sim_matrix = None
         if settings.similarity_method == "embeddings":
             sim_matrix = await build_similarity_matrix(
-                [t.headline for t in topics],
+                [t.headline for t in display_topics],
                 [t.headline for t in prev_topics],
             )
             log.info(
@@ -125,7 +126,7 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
             )
 
         delta = compute_delta(
-            current_topics=topics,
+            current_topics=display_topics,
             previous_topics=prev_topics,
             previous_run_id=previous.run_id,
             previous_created_at=previous.created_at,
@@ -137,14 +138,14 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
             f"days_apart={delta.days_apart} type={delta.comparison_type}"
         )
 
-    # Persist the current snapshot
+    # Persist all topics (including buffer) for a wider matching pool on future runs
     await asyncio.to_thread(
         history_db.save_snapshot,
         run_id,
         domain_key,
         config.model_dump(),
         report.model_dump(),
-        [t.model_dump() for t in topics],
+        [t.model_dump() for t in all_topics],
         report.generated_at,
     )
 
