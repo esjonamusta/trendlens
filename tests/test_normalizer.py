@@ -1,6 +1,8 @@
 """Tests for topic keyword extraction and similarity (app/services/normalizer.py)."""
 from __future__ import annotations
 
+import pytest
+
 from app.core.schemas import EvidenceItem, ResearchItem, SearchSource
 from app.services.normalizer import (
     extract_keywords,
@@ -80,9 +82,6 @@ def test_unrelated_topics_have_low_similarity():
     kws_b = extract_keywords("Open-source agent infrastructure tooling")
     score = topic_similarity(kws_a, kws_b)
     assert score < 0.20, f"Expected < 0.20 but got {score:.3f}"
-
-
-import pytest
 
 
 # ── match_topic_to_sources ────────────────────────────────────────────────────

@@ -1,7 +1,6 @@
 """Tests for the history DB layer (app/db/history.py)."""
 from __future__ import annotations
 
-import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -9,7 +8,6 @@ import pytest
 
 import app.db.history as history_module
 from app.db.history import (
-    StoredSnapshot,
     find_previous_snapshot,
     init_db,
     list_snapshots,
