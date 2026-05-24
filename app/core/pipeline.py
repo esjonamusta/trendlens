@@ -12,7 +12,8 @@ from app.core.schemas import ResearchConfig, ResearchReportWithDelta, TopicSnaps
 from app.db import history as history_db
 from app.services.delta import compute_delta
 from app.services.embeddings import build_similarity_matrix
-from app.services.normalizer import item_to_topic_snapshot
+from app.services.normalizer import item_to_topic_snapshot, topic_similarity
+from app.services.trend_engine import novelty_score
 
 log = get_logger(__name__)
 
@@ -97,7 +98,37 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
         settings.delta_min_gap_hours,
     )
 
+    # Build previous topic list once; reused for novelty scoring and delta
+    prev_topic_list = [TopicSnapshot(**t) for t in previous.topics] if previous is not None else []
+
+    # Enrich display topics and items with novelty, first_seen_at, last_seen_at.
+    # freshness_score is already set on display_topics (carried from ResearchItem).
+    for snap, item in zip(display_topics, display_items):
+        snap_kws = frozenset(snap.keywords)
+        n_score = novelty_score(snap_kws, prev_topic_list)
+
+        # Carry forward first_seen_at from the best previous match, or stamp as new.
+        matched_prev: TopicSnapshot | None = None
+        best_sim = 0.0
+        for p in prev_topic_list:
+            sim = topic_similarity(snap_kws, frozenset(p.keywords))
+            if sim > best_sim and sim >= 0.15:
+                best_sim, matched_prev = sim, p
+
+        first_seen = (
+            (matched_prev.first_seen_at or previous.created_at)
+            if matched_prev and previous else report.generated_at
+        )
+
+        snap.novelty_score = n_score
+        snap.first_seen_at = first_seen
+        snap.last_seen_at = report.generated_at
+        item.novelty_score = n_score
+        item.first_seen_at = first_seen
+        item.last_seen_at = report.generated_at
+
     delta = None
+    is_baseline = False
     delta_unavailable_reason = ""
 
     if previous is None:
@@ -108,17 +139,13 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
                 "Run again tomorrow — comparing runs from the same day shows "
                 "LLM variance, not real trend movement."
             )
-    else:
-        is_baseline = False
 
     if previous is not None:
-        prev_topics = [TopicSnapshot(**t) for t in previous.topics]
-
         sim_matrix = None
         if settings.similarity_method == "embeddings":
             sim_matrix = await build_similarity_matrix(
                 [t.headline for t in display_topics],
-                [t.headline for t in prev_topics],
+                [t.headline for t in prev_topic_list],
             )
             log.info(
                 f"Similarity | method={'embeddings' if sim_matrix else 'jaccard (fallback)'} "
@@ -127,7 +154,7 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
 
         delta = compute_delta(
             current_topics=display_topics,
-            previous_topics=prev_topics,
+            previous_topics=prev_topic_list,
             previous_run_id=previous.run_id,
             previous_created_at=previous.created_at,
             current_created_at=report.generated_at,

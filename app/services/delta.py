@@ -62,9 +62,15 @@ def compute_trend_delta_score(current: TopicSnapshot, previous: TopicSnapshot) -
     )
 
 
-def _classify(delta_score: float, confidence: str) -> str:
+_FRESHNESS_REQUIRED = 0.3  # minimum freshness_score for NEW or SPIKING
+
+
+def _classify(delta_score: float, confidence: str, freshness: float = 0.5) -> str:
     if delta_score >= _SPIKE_THRESHOLD:
-        return "SPIKING VS LAST RUN"
+        # Block SPIKING when all evidence is stale — growth is repeated old content, not a real spike
+        if freshness >= _FRESHNESS_REQUIRED:
+            return "SPIKING VS LAST RUN"
+        return "STABLE BUT IMPORTANT"
     if delta_score <= _DECLINE_THRESHOLD:
         return "DECLINING"
     if confidence == "Low":
@@ -183,12 +189,17 @@ def compute_delta(
         prev = previous_topics[prev_idx] if prev_idx is not None else None
 
         if prev is None:
-            # New topic
+            # Topic not seen in previous run.
+            # Require some fresh evidence — stale-only content reappearing is not a true new trend.
+            if cur.freshness_score >= _FRESHNESS_REQUIRED:
+                new_classification = "NEW THIS RUN"
+            else:
+                new_classification = "WEAK SIGNAL TO WATCH"
             evidence: list[str] = []
             if cur.sources:
                 evidence.append(f"Sources: {', '.join(cur.sources)}")
             insights.append(DeltaInsight(
-                classification="NEW THIS RUN",
+                classification=new_classification,
                 topic=cur.headline,
                 previous_rank=None,
                 current_rank=cur.rank,
@@ -211,7 +222,11 @@ def compute_delta(
                 + breakdown.diversity_contribution,
                 4,
             )
-            classification = _classify(score, cur.confidence)
+            classification = _classify(score, cur.confidence, cur.freshness_score)
+            # A high-novelty topic that matched an old topic by keywords but introduces
+            # genuinely new subtopics/angles should surface as NEW, not just STABLE.
+            if classification == "STABLE BUT IMPORTANT" and cur.novelty_score >= 0.7:
+                classification = "NEW THIS RUN"
             reason = _build_reason(classification, cur, prev)
             cur_count = cur.matched_url_count or cur.source_count
             prev_count = prev.matched_url_count or prev.source_count

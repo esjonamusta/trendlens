@@ -20,10 +20,11 @@ from dataclasses import dataclass, field
 from datetime import date
 from urllib.parse import urlparse
 
-from app.core.schemas import SearchSource
+from app.core.schemas import SearchSource, TopicSnapshot
 from app.services.normalizer import extract_keywords, topic_similarity
 
 _CURRENT_YEAR = date.today().year
+_PREV_YEAR = _CURRENT_YEAR - 1
 _CLUSTER_THRESHOLD = 0.20
 _STALE_CUTOFF = _CURRENT_YEAR - 2  # years ≤ this are stale (e.g. 2024 and below in 2026)
 
@@ -170,6 +171,76 @@ def source_quality_weight(source: SearchSource) -> float:
     return base * (0.5 if _is_stale(source) else 1.0)
 
 
+def freshness_score(source: SearchSource) -> float:
+    """
+    Score temporal freshness from year references in title/snippet.
+
+      1.0  current year mentioned
+      0.7  previous year only
+      0.5  no year signal (neutral)
+      0.2  only stale years (≤ _STALE_CUTOFF)
+    """
+    text = f"{source.title} {source.snippet}"
+    years = [int(y) for y in re.findall(r"\b(20\d{2})\b", text)]
+    if not years:
+        return 0.5
+    max_year = max(years)
+    if max_year >= _CURRENT_YEAR:
+        return 1.0
+    if max_year >= _PREV_YEAR:
+        return 0.7
+    return 0.2
+
+
+def _freshness_multiplier(source: SearchSource) -> float:
+    """Internal multiplier applied to weighted_evidence_score.
+
+    Boosts fresh sources; leaves neutral/stale unchanged here because
+    source_quality_weight already applies the 0.5 stale penalty.
+    """
+    text = f"{source.title} {source.snippet}"
+    years = [int(y) for y in re.findall(r"\b(20\d{2})\b", text)]
+    if not years:
+        return 1.0
+    max_year = max(years)
+    if max_year >= _CURRENT_YEAR:
+        return 1.2
+    if max_year >= _PREV_YEAR:
+        return 1.05
+    return 1.0  # stale already penalized in source_quality_weight
+
+
+def novelty_score(
+    cluster_kws: frozenset[str],
+    history: list[TopicSnapshot],
+) -> float:
+    """
+    Measure how new this topic's keyword composition is relative to stored history.
+
+      1.0  keywords never seen before (completely novel)
+      0.0  exact keyword match with a historical topic
+
+    A bonus is added when the cluster introduces keywords absent from all
+    historical snapshots — rewarding new subtopics under an old canonical term.
+    """
+    if not history:
+        return 1.0
+    if not cluster_kws:
+        return 0.5
+
+    max_sim = max(
+        topic_similarity(cluster_kws, frozenset(snap.keywords))
+        for snap in history
+    )
+
+    all_hist_kws: frozenset[str] = frozenset().union(*(frozenset(s.keywords) for s in history))
+    new_kw_fraction = len(cluster_kws - all_hist_kws) / len(cluster_kws)
+
+    base_novelty = 1.0 - max_sim
+    boosted = base_novelty + (new_kw_fraction * 0.3)
+    return round(min(1.0, max(0.0, boosted)), 4)
+
+
 def normalize_for_clustering(text: str) -> str:
     """
     Lowercase text and replace known concept phrases/acronyms with canonical tokens.
@@ -221,14 +292,14 @@ class TrendCluster:
 
     @property
     def weighted_evidence_score(self) -> float:
-        """Quality-weighted evidence sum with diminishing returns for same-domain sources.
+        """Quality- and freshness-weighted evidence sum with same-domain diminishing returns.
 
-        Sources are sorted highest-quality-first so the best source from each domain
-        always gets full weight. Subsequent sources from the same domain are halved
-        each time: weight × 0.5^(same_domain_count).
+        Each source is scored as quality_weight × freshness_multiplier, sorted
+        highest-first so the best source from each domain always gets full weight.
+        Subsequent sources from the same domain are halved each time.
         """
         scored = sorted(
-            ((s, source_quality_weight(s)) for s in self.sources),
+            ((s, source_quality_weight(s) * _freshness_multiplier(s)) for s in self.sources),
             key=lambda sw: sw[1],
             reverse=True,
         )
@@ -240,6 +311,13 @@ class TrendCluster:
             total += w * (0.5 ** n)
             domain_counts[domain] = n + 1
         return round(total, 4)
+
+    @property
+    def cluster_freshness_score(self) -> float:
+        """Average freshness_score across all sources in the cluster."""
+        if not self.sources:
+            return 0.5
+        return round(sum(freshness_score(s) for s in self.sources) / len(self.sources), 4)
 
     @property
     def unique_domain_count(self) -> int:

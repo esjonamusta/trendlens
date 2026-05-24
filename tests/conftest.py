@@ -13,6 +13,10 @@ def make_topic(
     pm_action: str = "Monitor closely.",
     matched_url_count: int = 0,
     matched_domains: list[str] | None = None,
+    freshness_score: float = 0.5,
+    novelty_score: float = 0.5,
+    first_seen_at: str = "",
+    last_seen_at: str = "",
 ) -> TopicSnapshot:
     if sources is None:
         sources = ["podcast", "reddit", "web"]
@@ -28,4 +32,8 @@ def make_topic(
         pm_action=pm_action,
         matched_url_count=matched_url_count,
         matched_domains=matched_domains or [],
+        freshness_score=freshness_score,
+        novelty_score=novelty_score,
+        first_seen_at=first_seen_at,
+        last_seen_at=last_seen_at,
     )

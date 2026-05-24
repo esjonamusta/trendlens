@@ -109,4 +109,6 @@ def item_to_topic_snapshot(
         pm_action=item.pm_action,
         matched_url_count=matched_url_count,
         matched_domains=matched_domains,
+        freshness_score=item.freshness_score,
+        # novelty_score, first_seen_at, last_seen_at enriched by the pipeline
     )

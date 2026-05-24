@@ -252,3 +252,83 @@ def test_unrelated_headlines_not_matched():
     classifications = [i.classification for i in result.insights]
     assert "NEW THIS RUN" in classifications
     assert len(result.disappeared) == 1
+
+
+# ── Freshness and novelty guards ──────────────────────────────────────────────
+
+def test_stale_only_topic_not_classified_new():
+    """A topic with stale-only freshness that has no previous match must not be NEW THIS RUN."""
+    current = [make_topic(
+        "AI compliance tools 2023 guide",
+        rank=1,
+        freshness_score=0.2,  # all sources are stale
+        keywords=["compliance", "tools", "guide"],
+    )]
+    previous = [make_topic("Fintech payment solutions blockchain", rank=1)]
+    result = _run_delta(current, previous)
+    assert result.insights[0].classification != "NEW THIS RUN", (
+        "Stale-only content reappearing should not be classified as a new trend"
+    )
+
+
+def test_stale_only_topic_cannot_spike():
+    """A topic where all evidence is stale must not be classified SPIKING even with high delta."""
+    previous = [make_topic(
+        "Agent workflow tooling", rank=3, source_count=5, confidence="Medium",
+        freshness_score=0.2,
+    )]
+    current = [make_topic(
+        "Agent workflow tooling", rank=1, source_count=20, confidence="High",
+        freshness_score=0.2,  # all stale
+    )]
+    result = _run_delta(current, previous)
+    assert result.insights[0].classification != "SPIKING VS LAST RUN", (
+        "A topic whose growth comes from stale repeated content must not spike"
+    )
+
+
+def test_fresh_topic_can_be_classified_new():
+    """A topic with fresh evidence and no previous match is NEW THIS RUN."""
+    current = [make_topic(
+        "Brand new AI framework launched today",
+        rank=1,
+        freshness_score=1.0,
+        keywords=["framework", "launched", "today"],
+    )]
+    previous = [make_topic("Fintech compliance regulation banking", rank=1)]
+    result = _run_delta(current, previous)
+    assert result.insights[0].classification == "NEW THIS RUN"
+
+
+def test_fresh_topic_can_spike():
+    """A topic with fresh evidence and strong growth is SPIKING."""
+    previous = [make_topic(
+        "Agent workflow tooling", rank=3, source_count=5, confidence="Medium",
+        freshness_score=1.0,
+    )]
+    current = [make_topic(
+        "Agent workflow tooling", rank=1, source_count=20, confidence="High",
+        freshness_score=1.0,
+    )]
+    result = _run_delta(current, previous)
+    assert result.insights[0].classification == "SPIKING VS LAST RUN"
+
+
+def test_new_subtopic_reclassified_new_when_novelty_high():
+    """A matched topic with novelty_score >= 0.7 should surface as NEW, not STABLE."""
+    previous = [make_topic(
+        "AI compliance tools enterprise",
+        rank=1, source_count=5, confidence="High",
+        keywords=["compliance", "tools", "enterprise"],
+    )]
+    current = [make_topic(
+        "AI compliance tools small business",
+        rank=1, source_count=5, confidence="High",
+        keywords=["compliance", "tools", "small", "business"],
+        novelty_score=0.8,   # high — introduces new subtopic angle
+        freshness_score=0.8,
+    )]
+    result = _run_delta(current, previous)
+    assert result.insights[0].classification == "NEW THIS RUN", (
+        "High-novelty topics matched to an old canonical should surface as NEW"
+    )

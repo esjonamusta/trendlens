@@ -7,13 +7,16 @@ from app.core.schemas import SearchSource, TrendSummaryList, TrendSummaryText
 from app.services.trend_engine import (
     CONCEPT_MAP,
     TrendCluster,
+    _PREV_YEAR,
     _SPECIFIC_CONCEPT_TOKENS,
     _STALE_CUTOFF,
     _is_stale,
     _merge_clusters,
     cluster_search_results,
     confidence_for_cluster,
+    freshness_score,
     normalize_for_clustering,
+    novelty_score,
     rank_clusters,
     source_quality_weight,
 )
@@ -508,3 +511,108 @@ def test_raw_evidence_count_preserved_alongside_weighted_score():
     # Diminishing returns guarantee ws < raw count for any realistic quality weight ≤ 1.0
     assert cluster.weighted_evidence_score < cluster.evidence_count
     assert cluster.weighted_evidence_score > 0
+
+
+# ── Freshness scoring ─────────────────────────────────────────────────────────
+
+def test_freshness_current_year_scores_1():
+    src = _src(f"AI agent report {date.today().year}")
+    assert freshness_score(src) == 1.0
+
+
+def test_freshness_previous_year_scores_07():
+    src = _src(f"AI agent report {_PREV_YEAR}")
+    assert freshness_score(src) == 0.7
+
+
+def test_freshness_no_year_scores_neutral():
+    src = _src("AI agent developer tools platform")
+    assert freshness_score(src) == 0.5
+
+
+def test_freshness_stale_year_scores_02():
+    src = _src(f"AI agent report {_STALE_CUTOFF}")
+    assert freshness_score(src) == 0.2
+
+
+def test_fresh_sources_boost_weighted_score():
+    """A cluster with current-year sources must outscore the same cluster with stale sources."""
+    stale_cluster = TrendCluster(
+        sources=[_src(f"Report {_STALE_CUTOFF}", url="https://techcrunch.com/old")],
+        keywords_set=frozenset({"developer", "tools"}),
+    )
+    fresh_cluster = TrendCluster(
+        sources=[_src(f"Report {date.today().year}", url="https://techcrunch.com/new")],
+        keywords_set=frozenset({"developer", "tools"}),
+    )
+    assert fresh_cluster.weighted_evidence_score > stale_cluster.weighted_evidence_score, (
+        f"fresh ws={fresh_cluster.weighted_evidence_score:.3f} should beat "
+        f"stale ws={stale_cluster.weighted_evidence_score:.3f}"
+    )
+
+
+def test_fresh_sources_rank_higher_than_stale():
+    stale_cluster = TrendCluster(
+        sources=[_src(f"Report {_STALE_CUTOFF}", url="https://techcrunch.com/old")],
+        keywords_set=frozenset({"developer", "tools"}),
+    )
+    fresh_cluster = TrendCluster(
+        sources=[_src(f"Report {date.today().year}", url="https://techcrunch.com/new")],
+        keywords_set=frozenset({"developer", "tools"}),
+    )
+    ranked = rank_clusters([stale_cluster, fresh_cluster])
+    assert ranked[0] is fresh_cluster
+
+
+def test_cluster_freshness_score_averages_sources():
+    cluster = TrendCluster(
+        sources=[
+            _src(f"Fresh {date.today().year}"),  # 1.0
+            _src("No year neutral"),              # 0.5
+            _src(f"Stale {_STALE_CUTOFF}"),       # 0.2
+        ],
+        keywords_set=frozenset({"developer"}),
+    )
+    expected = round((1.0 + 0.5 + 0.2) / 3, 4)
+    assert cluster.cluster_freshness_score == expected
+
+
+# ── Novelty scoring ───────────────────────────────────────────────────────────
+
+def test_novelty_no_history_returns_1():
+    from app.core.schemas import TopicSnapshot
+    assert novelty_score(frozenset({"mcp", "developer", "tools"}), []) == 1.0
+
+
+def test_novelty_exact_match_returns_near_zero():
+    from app.core.schemas import TopicSnapshot
+    history = [TopicSnapshot(
+        rank=1, headline="MCP developer tools", keywords=["mcp", "developer", "tools"],
+        confidence="High", source_count=3, sources=["web"],
+        pm_action="Monitor.", freshness_score=0.5, novelty_score=0.5,
+    )]
+    score = novelty_score(frozenset({"mcp", "developer", "tools"}), history)
+    assert score < 0.1
+
+
+def test_novelty_partial_match_with_new_keywords_scores_medium():
+    from app.core.schemas import TopicSnapshot
+    history = [TopicSnapshot(
+        rank=1, headline="MCP enterprise tools", keywords=["mcp", "enterprise", "tools"],
+        confidence="High", source_count=3, sources=["web"],
+        pm_action="Monitor.", freshness_score=0.5, novelty_score=0.5,
+    )]
+    # Shared: {mcp, tools}. New: {small, business, market}
+    score = novelty_score(frozenset({"mcp", "tools", "small", "business", "market"}), history)
+    assert 0.3 < score < 0.9
+
+
+def test_novelty_completely_unseen_topic_scores_high():
+    from app.core.schemas import TopicSnapshot
+    history = [TopicSnapshot(
+        rank=1, headline="Fintech compliance audit", keywords=["fintech", "compliance", "audit"],
+        confidence="High", source_count=3, sources=["web"],
+        pm_action="Monitor.", freshness_score=0.5, novelty_score=0.5,
+    )]
+    score = novelty_score(frozenset({"quantum", "computing", "enterprise"}), history)
+    assert score > 0.8

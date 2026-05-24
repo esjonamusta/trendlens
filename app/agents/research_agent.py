@@ -178,6 +178,8 @@ class ResearchAgent:
                 evidence_count=cluster.evidence_count,
                 weighted_evidence_score=round(cluster.weighted_evidence_score, 3),
                 unique_domain_count=cluster.unique_domain_count,
+                freshness_score=round(cluster.cluster_freshness_score, 3),
+                # novelty_score / first_seen_at / last_seen_at set by pipeline
             ))
 
         log.info(f"ResearchAgent done | items={len(items)}")

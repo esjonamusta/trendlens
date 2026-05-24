@@ -32,6 +32,10 @@ class ResearchItem(BaseModel):
     evidence_count: int = 0               # raw source count for transparency
     weighted_evidence_score: float = 0.0  # quality-weighted score used for ranking
     unique_domain_count: int = 0          # number of distinct source domains
+    freshness_score: float = 0.5          # 0.2 stale → 0.5 neutral → 1.0 current-year
+    novelty_score: float = 0.5            # 0.0 exact historical match → 1.0 completely new
+    first_seen_at: str = ""               # ISO timestamp when this topic first appeared in history
+    last_seen_at: str = ""                # ISO timestamp of the most recent run containing this topic
 
 
 class ResearchItemsList(BaseModel):
@@ -70,6 +74,10 @@ class TopicSnapshot(BaseModel):
     pm_action: str
     matched_url_count: int = 0      # real count of search result URLs matched to this topic
     matched_domains: list[str] = [] # unique domains from matched search results
+    freshness_score: float = 0.5    # average freshness of sources (0.2 stale → 1.0 current-year)
+    novelty_score: float = 0.5      # how new this topic is vs history (0.0 repeat → 1.0 novel)
+    first_seen_at: str = ""         # ISO timestamp of first appearance in stored history
+    last_seen_at: str = ""          # ISO timestamp of most recent run containing this topic
 
 
 class ScoreBreakdown(BaseModel):
