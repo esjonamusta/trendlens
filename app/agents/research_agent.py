@@ -175,6 +175,9 @@ class ResearchAgent:
                 source_links=[s.url for s in cluster.sources if s.type == "web"],
                 confidence=conf_label,
                 grounded=True,
+                evidence_count=cluster.evidence_count,
+                weighted_evidence_score=round(cluster.weighted_evidence_score, 3),
+                unique_domain_count=cluster.unique_domain_count,
             ))
 
         log.info(f"ResearchAgent done | items={len(items)}")

@@ -29,6 +29,9 @@ class ResearchItem(BaseModel):
     confidence: Annotated[Literal["High", "Medium", "Low"], Field(description="High = 3+ sources, Medium = 2, Low = 1.")]
     pm_action: Annotated[str, Field(description="One sentence starting with a verb — what should the PM do?")]
     grounded: bool = True  # False when no source_links match the actual search result URLs
+    evidence_count: int = 0               # raw source count for transparency
+    weighted_evidence_score: float = 0.0  # quality-weighted score used for ranking
+    unique_domain_count: int = 0          # number of distinct source domains
 
 
 class ResearchItemsList(BaseModel):
