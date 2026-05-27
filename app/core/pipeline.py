@@ -152,6 +152,10 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
                 f"domain='{config.domain}'"
             )
 
+        # Load recent snapshot history (newest-first) for lifecycle classification.
+        history_snapshots = await asyncio.to_thread(history_db.list_snapshots, domain_key, 10)
+        snap_history = [{"topics": s.topics, "created_at": s.created_at} for s in history_snapshots]
+
         delta = compute_delta(
             current_topics=display_topics,
             previous_topics=prev_topic_list,
@@ -159,6 +163,8 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
             previous_created_at=previous.created_at,
             current_created_at=report.generated_at,
             similarity_matrix=sim_matrix,
+            snapshot_history=snap_history,
+            raw_cluster_ids=set(report.raw_cluster_canonical_ids),
         )
         log.info(
             f"Delta computed | domain='{config.domain}' "

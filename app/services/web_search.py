@@ -81,7 +81,13 @@ class WebSearchService:
 
     async def _search_one(self, query: str, max_results: int, days: int = 90) -> QueryResults:
         if self._tavily_key:
-            return await self._tavily(query, max_results, days)
+            try:
+                return await self._tavily(query, max_results, days)
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code in (402, 429, 432) and self._brave_key:
+                    log.info(f"Tavily credit limit hit — falling back to Brave for '{query}'")
+                else:
+                    raise
         return await self._brave(query, max_results, days)
 
     async def _tavily(self, query: str, max_results: int, days: int = 90) -> QueryResults:

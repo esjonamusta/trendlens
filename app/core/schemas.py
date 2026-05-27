@@ -58,7 +58,8 @@ class ResearchReport(BaseModel):
     config: ResearchConfig
     items: list[ResearchItem]
     generated_at: str
-    search_sources: list[SearchSource] = []  # all sources fed to the LLM before synthesis
+    search_sources: list[SearchSource] = []          # all sources fed to the LLM before synthesis
+    raw_cluster_canonical_ids: list[str] = []        # canonical IDs for ALL clusters (not just top-N)
 
 
 # ── History + Delta schemas ────────────────────────────────────────────────────
@@ -72,12 +73,14 @@ class TopicSnapshot(BaseModel):
     source_count: int
     sources: list[str]
     pm_action: str
-    matched_url_count: int = 0      # real count of search result URLs matched to this topic
-    matched_domains: list[str] = [] # unique domains from matched search results
-    freshness_score: float = 0.5    # average freshness of sources (0.2 stale → 1.0 current-year)
-    novelty_score: float = 0.5      # how new this topic is vs history (0.0 repeat → 1.0 novel)
-    first_seen_at: str = ""         # ISO timestamp of first appearance in stored history
-    last_seen_at: str = ""          # ISO timestamp of most recent run containing this topic
+    matched_url_count: int = 0          # real count of search result URLs matched to this topic
+    matched_domains: list[str] = []     # unique domains from matched search results
+    freshness_score: float = 0.5        # average freshness of sources (0.2 stale → 1.0 current-year)
+    novelty_score: float = 0.5          # how new this topic is vs history (0.0 repeat → 1.0 novel)
+    first_seen_at: str = ""             # ISO timestamp of first appearance in stored history
+    last_seen_at: str = ""              # ISO timestamp of most recent run containing this topic
+    canonical_topic_id: str = ""        # deterministic MD5 hash of sorted keywords (first 12 chars)
+    weighted_evidence_score: float = 0.0  # quality-weighted evidence score for trend tracking
 
 
 class ScoreBreakdown(BaseModel):
@@ -106,6 +109,18 @@ class DeltaInsight(BaseModel):
     score_breakdown: ScoreBreakdown | None = None
 
 
+class TopicLifecycle(BaseModel):
+    """Lifecycle status for a previous topic that did not appear in the current run."""
+    canonical_topic_id: str
+    status: str                              # NOT_DETECTED_THIS_RUN | COOLING | DORMANT | DISAPPEARED
+    topic_headline: str                      # most recent display headline for this topic
+    days_since_last_seen: float = 0.0
+    consecutive_missing_runs: int = 0
+    last_seen_at: str = ""
+    last_weighted_evidence_score: float = 0.0
+    rolling_7d_weighted_evidence_score: float = 0.0
+
+
 class DeltaReport(BaseModel):
     """Full delta between the current run and the selected previous run."""
     compared_to_run_id: str
@@ -113,7 +128,8 @@ class DeltaReport(BaseModel):
     days_apart: float
     comparison_type: str         # "7_day" | "most_recent"
     insights: list[DeltaInsight]
-    disappeared: list[str]       # headlines of topics that vanished
+    disappeared: list[str]       # headlines confirmed DISAPPEARED (14+ days, no raw cluster evidence)
+    lifecycle: list[TopicLifecycle] = []  # all unmatched previous topics with classified status
 
 
 class ResearchReportWithDelta(ResearchReport):

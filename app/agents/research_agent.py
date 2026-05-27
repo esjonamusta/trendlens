@@ -22,7 +22,7 @@ from app.core.schemas import (
     TrendSummaryList,
     TrendSummaryText,
 )
-from app.services.normalizer import extract_keywords, topic_similarity
+from app.services.normalizer import extract_keywords, make_canonical_id, topic_similarity
 from app.services.trend_engine import (
     TrendCluster,
     cluster_search_results,
@@ -141,10 +141,19 @@ class ResearchAgent:
                 )
             ]
 
+        # Canonical IDs for ALL clusters (wider pool for lifecycle tracking)
+        all_cluster_ids = [make_canonical_id(c.keywords_set) for c in ranked]
+
         top = ranked[: config.max_items + _DELTA_BUFFER]
         if not top:
             log.warning("No clusters after exclusion filter")
-            return ResearchReport(config=config, items=[], generated_at="", search_sources=search_sources)
+            return ResearchReport(
+                config=config,
+                items=[],
+                generated_at="",
+                search_sources=search_sources,
+                raw_cluster_canonical_ids=all_cluster_ids,
+            )
 
         # ── 5. LLM writes text only — URLs and confidence already set ─────────
         summaries = await self._summarize_trends(config, top, excluded_headlines)
@@ -188,6 +197,7 @@ class ResearchAgent:
             items=items,
             generated_at="",
             search_sources=search_sources,
+            raw_cluster_canonical_ids=all_cluster_ids,
         )
 
     async def _discover_sources(self, config: ResearchConfig) -> SourceDiscovery:

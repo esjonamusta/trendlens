@@ -6,6 +6,10 @@ from datetime import datetime, timedelta, timezone
 from app.services.delta import (
     _DECLINE_THRESHOLD,
     _SPIKE_THRESHOLD,
+    COOLING_AFTER_MISSING_RUNS,
+    DISAPPEARED_AFTER_DAYS,
+    DORMANT_AFTER_DAYS,
+    DORMANT_AFTER_MISSING_RUNS,
     compute_delta,
     compute_trend_delta_score,
 )
@@ -26,6 +30,31 @@ def _run_delta(current_topics, previous_topics, days_apart: float = 7.0):
         previous_created_at=_ts(days_ago=days_apart),
         current_created_at=_ts(days_ago=0),
     )
+
+
+def _run_delta_with_history(
+    current_topics,
+    previous_topics,
+    days_apart: float = 7.0,
+    snapshot_history: list[dict] | None = None,
+    raw_cluster_ids: set[str] | None = None,
+):
+    return compute_delta(
+        current_topics=current_topics,
+        previous_topics=previous_topics,
+        previous_run_id="prev-run",
+        previous_created_at=_ts(days_ago=days_apart),
+        current_created_at=_ts(days_ago=0),
+        snapshot_history=snapshot_history or [],
+        raw_cluster_ids=raw_cluster_ids or set(),
+    )
+
+
+def _make_snap(topics: list, days_ago: float) -> dict:
+    return {
+        "topics": [t.model_dump() for t in topics],
+        "created_at": _ts(days_ago=days_ago),
+    }
 
 
 # ── New topic detection ───────────────────────────────────────────────────────
@@ -53,7 +82,7 @@ def test_new_topic_has_no_previous_source_count():
 # ── Disappeared topic detection ───────────────────────────────────────────────
 
 def test_disappeared_topic_detected():
-    """A previous topic with no match in the current run appears in disappeared."""
+    """A previous topic with no match ends up in lifecycle, not in disappeared (needs 14+ days for that)."""
     current = [make_topic("Agent infrastructure tooling grows", rank=1)]
     previous = [
         make_topic("Agent infrastructure tooling grows", rank=1),
@@ -61,14 +90,19 @@ def test_disappeared_topic_detected():
     ]
 
     result = _run_delta(current, previous)
-    assert any("Blockchain" in h for h in result.disappeared)
+    # With no snapshot_history, 1 missed run → NOT_DETECTED_THIS_RUN (not DISAPPEARED)
+    assert result.disappeared == []
+    assert any("Blockchain" in lc.topic_headline for lc in result.lifecycle)
+    blockchain_lc = next(lc for lc in result.lifecycle if "Blockchain" in lc.topic_headline)
+    assert blockchain_lc.status == "NOT_DETECTED_THIS_RUN"
 
 
 def test_no_false_disappeared_when_matched():
-    """Matched topics should not appear in disappeared."""
+    """Matched topics should not appear in disappeared or lifecycle."""
     topic = make_topic("Open source agent infrastructure tooling", rank=1)
     result = _run_delta([topic], [topic])
     assert result.disappeared == []
+    assert result.lifecycle == []
 
 
 # ── Spike detection ───────────────────────────────────────────────────────────
@@ -251,7 +285,9 @@ def test_unrelated_headlines_not_matched():
     result = _run_delta(current, previous)
     classifications = [i.classification for i in result.insights]
     assert "NEW THIS RUN" in classifications
-    assert len(result.disappeared) == 1
+    # Unmatched previous topic enters lifecycle as NOT_DETECTED_THIS_RUN (1 miss, needs 14+ days for DISAPPEARED)
+    assert len(result.lifecycle) == 1
+    assert result.lifecycle[0].status == "NOT_DETECTED_THIS_RUN"
 
 
 # ── Freshness and novelty guards ──────────────────────────────────────────────
@@ -312,6 +348,137 @@ def test_fresh_topic_can_spike():
     )]
     result = _run_delta(current, previous)
     assert result.insights[0].classification == "SPIKING VS LAST RUN"
+
+
+# ── Lifecycle classification ──────────────────────────────────────────────────
+
+def test_lifecycle_not_detected_this_run():
+    """An unmatched previous topic with no history → NOT_DETECTED_THIS_RUN."""
+    current = [make_topic("Agent infrastructure tooling grows", rank=1)]
+    previous = [
+        make_topic("Agent infrastructure tooling grows", rank=1),
+        make_topic("Blockchain payments news", rank=2, canonical_topic_id="abc123"),
+    ]
+    result = _run_delta_with_history(current, previous, snapshot_history=[])
+    assert len(result.lifecycle) == 1
+    assert result.lifecycle[0].status == "NOT_DETECTED_THIS_RUN"
+    assert result.lifecycle[0].consecutive_missing_runs == 1
+
+
+def test_lifecycle_cooling_after_2_misses():
+    """2 consecutive missed runs → COOLING."""
+    blockchain = make_topic("Blockchain payments news", rank=2, canonical_topic_id="abc123")
+    current = [make_topic("Agent infrastructure tooling grows", rank=1)]
+    previous = [
+        make_topic("Agent infrastructure tooling grows", rank=1),
+        blockchain,
+    ]
+    # snapshot_history[0] (1 day ago): no blockchain; snapshot_history[1] (2 days ago): has it
+    history = [
+        _make_snap([make_topic("Agent infrastructure tooling", rank=1)], days_ago=1.0),
+        _make_snap([blockchain], days_ago=2.0),
+    ]
+    result = _run_delta_with_history(current, previous, days_apart=2.0, snapshot_history=history)
+    blockchain_lc = next(lc for lc in result.lifecycle if "Blockchain" in lc.topic_headline)
+    assert blockchain_lc.status == "COOLING"
+    assert blockchain_lc.consecutive_missing_runs == COOLING_AFTER_MISSING_RUNS
+
+
+def test_lifecycle_dormant_after_5_misses():
+    """5 consecutive missed runs → DORMANT."""
+    blockchain = make_topic("Blockchain payments news", rank=1, canonical_topic_id="abc123")
+    current = [make_topic("Agent infrastructure tooling", rank=1)]
+    previous = [blockchain]
+    # 4 history snapshots without the topic, then the 5th has it
+    history = [
+        _make_snap([make_topic("Unrelated topic alpha", rank=1)], days_ago=1.0),
+        _make_snap([make_topic("Unrelated topic beta", rank=1)], days_ago=2.0),
+        _make_snap([make_topic("Unrelated topic gamma", rank=1)], days_ago=3.0),
+        _make_snap([make_topic("Unrelated topic delta", rank=1)], days_ago=4.0),
+        _make_snap([blockchain], days_ago=5.0),
+    ]
+    result = _run_delta_with_history(current, previous, days_apart=5.0, snapshot_history=history)
+    lc = result.lifecycle[0]
+    assert lc.status == "DORMANT"
+    assert lc.consecutive_missing_runs >= DORMANT_AFTER_MISSING_RUNS
+
+
+def test_lifecycle_dormant_after_7_days():
+    """7+ days since last_seen_at triggers DORMANT even with few consecutive misses."""
+    old_topic = make_topic(
+        "Blockchain payments news", rank=1,
+        canonical_topic_id="abc123",
+        last_seen_at=_ts(days_ago=8.0),
+    )
+    current = [make_topic("Agent infrastructure tooling", rank=1)]
+    previous = [old_topic]
+    # Single snapshot 8 days ago with the topic
+    history = [_make_snap([old_topic], days_ago=8.0)]
+    result = _run_delta_with_history(current, previous, days_apart=8.0, snapshot_history=history)
+    lc = result.lifecycle[0]
+    assert lc.status == "DORMANT"
+    assert lc.days_since_last_seen >= DORMANT_AFTER_DAYS
+
+
+def test_lifecycle_disappeared_after_14_days():
+    """14+ days since last_seen_at → DISAPPEARED, and it appears in disappeared list."""
+    old_topic = make_topic(
+        "Blockchain payments news", rank=1,
+        canonical_topic_id="abc123",
+        last_seen_at=_ts(days_ago=15.0),
+    )
+    current = [make_topic("Agent infrastructure tooling", rank=1)]
+    previous = [old_topic]
+    history = [_make_snap([old_topic], days_ago=15.0)]
+    result = _run_delta_with_history(current, previous, days_apart=15.0, snapshot_history=history)
+    lc = result.lifecycle[0]
+    assert lc.status == "DISAPPEARED"
+    assert lc.days_since_last_seen >= DISAPPEARED_AFTER_DAYS
+    assert any("Blockchain" in h for h in result.disappeared)
+
+
+def test_lifecycle_not_detected_when_in_raw_clusters():
+    """Topic in raw_cluster_ids → NOT_DETECTED_THIS_RUN even with long absence."""
+    old_topic = make_topic(
+        "Blockchain payments news", rank=1,
+        canonical_topic_id="abc123",
+        last_seen_at=_ts(days_ago=20.0),
+    )
+    current = [make_topic("Agent infrastructure tooling", rank=1)]
+    previous = [old_topic]
+    result = _run_delta_with_history(
+        current, previous,
+        days_apart=20.0,
+        snapshot_history=[],
+        raw_cluster_ids={"abc123"},  # still detected in clustering this run
+    )
+    lc = result.lifecycle[0]
+    assert lc.status == "NOT_DETECTED_THIS_RUN"
+    assert result.disappeared == []
+
+
+def test_disappeared_field_only_contains_truly_disappeared():
+    """The disappeared list must not include COOLING, DORMANT, or NOT_DETECTED topics."""
+    cooling = make_topic("Cooling topic here", rank=2, canonical_topic_id="cool01")
+    old = make_topic(
+        "Truly gone topic here", rank=3,
+        canonical_topic_id="gone01",
+        last_seen_at=_ts(days_ago=16.0),
+    )
+    current = [make_topic("Agent infrastructure tooling", rank=1)]
+    previous = [make_topic("Agent infrastructure tooling", rank=1), cooling, old]
+    history = [
+        _make_snap([cooling], days_ago=1.0),
+        _make_snap([old], days_ago=16.0),
+    ]
+    result = _run_delta_with_history(current, previous, days_apart=7.0, snapshot_history=history)
+    # Only the truly disappeared topic should be in disappeared
+    assert len(result.disappeared) == 1
+    assert "Truly gone" in result.disappeared[0]
+    # Both should be in lifecycle
+    statuses = {lc.topic_headline: lc.status for lc in result.lifecycle}
+    assert any("Cooling" in h for h in statuses)
+    assert any("Truly gone" in h for h in statuses)
 
 
 def test_new_subtopic_reclassified_new_when_novelty_high():

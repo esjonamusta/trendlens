@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from urllib.parse import urlparse
 
@@ -17,6 +18,12 @@ _STOPWORDS: frozenset[str] = frozenset({
     "all", "one", "two", "three", "use", "used", "using", "make", "gets",
     "get", "see", "set", "puts", "put", "take", "takes", "show", "shows",
 })
+
+
+def make_canonical_id(keywords: list[str] | frozenset[str]) -> str:
+    """Deterministic 12-char ID derived from the sorted keyword set."""
+    joined = "|".join(sorted(keywords))
+    return hashlib.md5(joined.encode()).hexdigest()[:12]
 
 
 def extract_keywords(text: str) -> frozenset[str]:
@@ -110,5 +117,7 @@ def item_to_topic_snapshot(
         matched_url_count=matched_url_count,
         matched_domains=matched_domains,
         freshness_score=item.freshness_score,
+        canonical_topic_id=make_canonical_id(keywords),
+        weighted_evidence_score=item.weighted_evidence_score,
         # novelty_score, first_seen_at, last_seen_at enriched by the pipeline
     )

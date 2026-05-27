@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app.core.schemas import DeltaInsight, DeltaReport, ScoreBreakdown, TopicSnapshot
+from app.core.schemas import (
+    DeltaInsight,
+    DeltaReport,
+    ScoreBreakdown,
+    TopicLifecycle,
+    TopicSnapshot,
+)
 from app.services.embeddings import EMBED_MATCH_THRESHOLD
 from app.services.normalizer import extract_keywords, topic_similarity
 
@@ -64,6 +70,12 @@ def compute_trend_delta_score(current: TopicSnapshot, previous: TopicSnapshot) -
 
 _FRESHNESS_REQUIRED = 0.3  # minimum freshness_score for NEW or SPIKING
 
+# ── Lifecycle thresholds ───────────────────────────────────────────────────────
+COOLING_AFTER_MISSING_RUNS = 2    # 2+ consecutive misses → COOLING
+DORMANT_AFTER_MISSING_RUNS = 5    # 5+ consecutive misses → DORMANT
+DORMANT_AFTER_DAYS = 7            # 7+ days since last seen → DORMANT
+DISAPPEARED_AFTER_DAYS = 14       # 14+ days since last seen → DISAPPEARED
+
 
 def _classify(delta_score: float, confidence: str, freshness: float = 0.5) -> str:
     if delta_score >= _SPIKE_THRESHOLD:
@@ -123,6 +135,113 @@ def _days_apart(ts_a: str, ts_b: str) -> float:
     return abs((_parse_dt(ts_a) - _parse_dt(ts_b)).total_seconds()) / 86400
 
 
+# ── Lifecycle helpers ─────────────────────────────────────────────────────────
+
+def _topic_in_snap(canonical_id: str, headline_kws: frozenset[str], snap_topics: list[dict]) -> bool:
+    """Return True if the topic appears in a snapshot's topic list."""
+    for t in snap_topics:
+        cid = t.get("canonical_topic_id", "")
+        if cid and cid == canonical_id:
+            return True
+    # Fallback for snapshots predating canonical_topic_id
+    if headline_kws:
+        for t in snap_topics:
+            t_kws = frozenset(t.get("keywords", []))
+            if t_kws and topic_similarity(headline_kws, t_kws) >= 0.15:
+                return True
+    return False
+
+
+def _rolling_7d_score(
+    canonical_id: str,
+    headline_kws: frozenset[str],
+    snapshot_history: list[dict],
+    current_created_at: str,
+) -> float:
+    """Average weighted_evidence_score across snapshots from the last 7 days."""
+    now_dt = _parse_dt(current_created_at)
+    scores = []
+    for snap in snapshot_history:
+        snap_dt = _parse_dt(snap["created_at"])
+        if (now_dt - snap_dt).total_seconds() > DORMANT_AFTER_DAYS * 86400:
+            break  # history is newest-first; no point scanning beyond 7 days
+        for t in snap["topics"]:
+            cid = t.get("canonical_topic_id", "")
+            matched = (cid and cid == canonical_id) or (
+                not cid and headline_kws
+                and topic_similarity(headline_kws, frozenset(t.get("keywords", []))) >= 0.15
+            )
+            if matched:
+                scores.append(t.get("weighted_evidence_score", 0.0))
+                break
+    return round(sum(scores) / len(scores), 4) if scores else 0.0
+
+
+def _topic_lifecycle(
+    prev: TopicSnapshot,
+    snapshot_history: list[dict],
+    raw_cluster_ids: set[str],
+    current_created_at: str,
+) -> TopicLifecycle:
+    canonical_id = prev.canonical_topic_id
+    headline_kws = frozenset(prev.keywords) if prev.keywords else extract_keywords(prev.headline)
+
+    # Detected in current run but below the display cutoff — not truly absent.
+    if canonical_id and canonical_id in raw_cluster_ids:
+        return TopicLifecycle(
+            canonical_topic_id=canonical_id,
+            status="NOT_DETECTED_THIS_RUN",
+            topic_headline=prev.headline,
+            days_since_last_seen=0.0,
+            consecutive_missing_runs=0,
+            last_seen_at=prev.last_seen_at,
+            last_weighted_evidence_score=prev.weighted_evidence_score,
+            rolling_7d_weighted_evidence_score=0.0,
+        )
+
+    # Walk snapshot_history (newest-first) to count consecutive missing runs.
+    consecutive = 1  # current run is the first miss
+    last_seen_at = prev.last_seen_at  # may be set from TopicSnapshot tracking
+    last_ws = prev.weighted_evidence_score
+
+    for snap in snapshot_history:
+        if _topic_in_snap(canonical_id, headline_kws, snap["topics"]):
+            if not last_seen_at:
+                last_seen_at = snap["created_at"]
+            break
+        consecutive += 1
+
+    # Compute days since last confirmed sighting.
+    if last_seen_at:
+        now_dt = _parse_dt(current_created_at)
+        ls_dt = _parse_dt(last_seen_at)
+        days_since = abs((now_dt - ls_dt).total_seconds()) / 86400
+    else:
+        days_since = 0.0
+
+    rolling = _rolling_7d_score(canonical_id, headline_kws, snapshot_history, current_created_at)
+
+    if days_since >= DISAPPEARED_AFTER_DAYS:
+        status = "DISAPPEARED"
+    elif consecutive >= DORMANT_AFTER_MISSING_RUNS or days_since >= DORMANT_AFTER_DAYS:
+        status = "DORMANT"
+    elif consecutive >= COOLING_AFTER_MISSING_RUNS:
+        status = "COOLING"
+    else:
+        status = "NOT_DETECTED_THIS_RUN"
+
+    return TopicLifecycle(
+        canonical_topic_id=canonical_id,
+        status=status,
+        topic_headline=prev.headline,
+        days_since_last_seen=round(days_since, 1),
+        consecutive_missing_runs=consecutive,
+        last_seen_at=last_seen_at,
+        last_weighted_evidence_score=last_ws,
+        rolling_7d_weighted_evidence_score=rolling,
+    )
+
+
 # Sorting priority for insight classifications
 _CLASS_ORDER = {
     "NEW THIS RUN": 0,
@@ -141,6 +260,8 @@ def compute_delta(
     previous_created_at: str,
     current_created_at: str,
     similarity_matrix: list[list[float]] | None = None,
+    snapshot_history: list[dict] | None = None,
+    raw_cluster_ids: set[str] | None = None,
 ) -> DeltaReport:
     """
     Match topics across two runs and produce ranked delta insights.
@@ -252,11 +373,19 @@ def compute_delta(
                 score_breakdown=breakdown,
             ))
 
-    disappeared = [
-        previous_topics[pi].headline
-        for pi in range(len(previous_topics))
-        if pi not in matched_prev_indices
-    ]
+    # Classify unmatched previous topics using lifecycle logic.
+    _history = snapshot_history or []
+    _raw_ids = raw_cluster_ids or set()
+
+    lifecycle: list[TopicLifecycle] = []
+    disappeared: list[str] = []
+
+    for pi in range(len(previous_topics)):
+        if pi not in matched_prev_indices:
+            lc = _topic_lifecycle(previous_topics[pi], _history, _raw_ids, current_created_at)
+            lifecycle.append(lc)
+            if lc.status == "DISAPPEARED":
+                disappeared.append(lc.topic_headline)
 
     # Sort: by classification priority, then by absolute delta score descending
     insights.sort(
@@ -273,4 +402,5 @@ def compute_delta(
         comparison_type=comparison_type,
         insights=insights,
         disappeared=disappeared,
+        lifecycle=lifecycle,
     )

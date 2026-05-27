@@ -1,8 +1,10 @@
 # TrendLens
 
-Get the **top trending signals for any domain** — pulled from podcasts, Reddit, and the web — ranked by what matters for product managers.
+Get the **top trending signals for any domain** — sourced from podcasts, Reddit, and the web — ranked by what matters for product managers.
 
-Run the same domain again tomorrow and see exactly what changed: what spiked, what disappeared, and what's a weak signal worth watching.
+Run the same domain again tomorrow and see what changed: what spiked, what's new, what's fading.
+
+> **How it works:** TrendLens searches the live web, clusters the results by topic, and uses an LLM to write a short summary of each cluster. Headlines are AI-synthesised from real sources — they are not verbatim article titles. Each result links to the underlying search results so you can verify the claim yourself.
 
 ---
 
@@ -11,12 +13,17 @@ Run the same domain again tomorrow and see exactly what changed: what spiked, wh
 You enter a domain (e.g. *"developer experience"*, *"fintech compliance"*). TrendLens:
 
 1. Discovers the most relevant podcasts and subreddits for that domain
-2. Searches across podcasts, Reddit, and the web in parallel — focused on the last 90 days
-3. Ranks the top signals by PM relevance with confidence scores
-4. Verifies each item against real search result URLs (flags unverified claims)
-5. Compares against the previous run (after 24h) and surfaces what changed
+2. Searches across podcast mentions, Reddit, and the web in parallel — focused on the last 90 days
+3. Clusters the results by topic and ranks them by evidence quality (weighted by source credibility, recency, and domain diversity)
+4. Passes the ranked clusters to an LLM which writes a short summary of each — headlines, what happened, why it matters, PM action
+5. Verifies each summary against real search result URLs (flags unverified claims)
+6. Compares against the previous run and surfaces what changed
 
-Each result includes what happened, why it matters, clickable evidence links from each source, and a one-line PM action.
+**What the LLM does and does not do:**
+- ✅ Writes the headline, summary, and PM action from the evidence provided
+- ✅ Chooses which clusters to highlight
+- ❌ Cannot fabricate URLs — all source links come from real search results
+- ❌ Cannot change confidence scores or evidence counts — those are computed deterministically
 
 ---
 
@@ -34,31 +41,29 @@ User Input (domain + optional context)
      ┌─────┴──────┬──────────────┐
      ▼            ▼              ▼
   Podcasts     Reddit          Web/News
-  (web search) (site:reddit)   (Tavily/Brave)
+  (web search) (site:reddit)   (Brave/Tavily)
      │            │              │
      └─────┬──────┴──────────────┘
            │  parallel fetch + deduplication
            ▼
     ┌───────────────┐
-    │ Rank &        │  LLM synthesises ranked items with confidence scores
-    │ Summarise     │  (Claude Sonnet, temperature 0.3)
+    │ Cluster &     │  Jaccard keyword clustering + weighted evidence scoring.
+    │ Rank          │  No LLM — fast, deterministic, auditable.
     └──────┬────────┘
            │
            ▼
     ┌───────────────┐
-    │ Grounding     │  Verifies each item's sources against real search URLs.
-    │ Check         │  Flags items with no matching domain as UNVERIFIED.
+    │ Summarise     │  LLM writes text only — headline, summary, PM action.
+    │               │  URLs and confidence labels are set before this step
+    │               │  and cannot be changed by the LLM.
     └──────┬────────┘
            │
            ▼
     ┌───────────────┐
     │ Delta Engine  │  Compares against previous run (≥24h gap).
-    │               │  Scores using real matched URL counts, not LLM numbers.
-    │               │  Surfaces NEW / SPIKING / DECLINING / DISAPPEARED
-    └──────┬────────┘
-           │
-           ▼
-    ResearchReportWithDelta (JSON + Markdown)
+    │               │  Scores using real matched URL counts.
+    │               │  Lifecycle: NOT_DETECTED → COOLING → DORMANT → DISAPPEARED
+    └──────┘
 ```
 
 ### Tech stack
@@ -67,7 +72,7 @@ User Input (domain + optional context)
 |-------|-----------|
 | LLM provider | Anthropic Claude (default) or OpenAI |
 | Structured outputs | [instructor](https://github.com/jxnl/instructor) + Pydantic v2 |
-| Web search | Tavily (primary) or Brave Search |
+| Web search | Brave Search (recommended) or Tavily |
 | API | FastAPI + uvicorn |
 | History | SQLite (WAL mode, auto-purge) |
 | UI | Vanilla HTML/CSS/JS (no framework) |
@@ -78,7 +83,7 @@ User Input (domain + optional context)
 
 ### Option A — Local (Python)
 
-**Prerequisites:** Python 3.12+, an Anthropic or OpenAI API key, a Tavily API key (free tier).
+**Prerequisites:** Python 3.12+, an Anthropic or OpenAI API key, a Brave Search or Tavily API key.
 
 ```bash
 git clone https://github.com/your-org/trendlens.git
@@ -109,8 +114,10 @@ make docker-down   # stop
 
 ```env
 ANTHROPIC_API_KEY=sk-ant-...
-TAVILY_API_KEY=tvly-...
+BRAVE_API_KEY=BSA...
 ```
+
+Brave Search has a **free tier of 2,000 queries/month** — enough for roughly 150 runs. Tavily also works (set `TAVILY_API_KEY`) and auto-falls back to Brave when its credits run out if both keys are set.
 
 ### CLI
 
@@ -118,6 +125,15 @@ TAVILY_API_KEY=tvly-...
 python cli.py "developer experience"
 python cli.py "fintech compliance" --competitors Stripe Plaid --days 14 --output report.md
 ```
+
+---
+
+## Known limitations
+
+- **Headlines are AI-generated, not real article titles.** The LLM synthesises a headline from a cluster of search results. Searching for it verbatim may return no results. Source links point to the underlying evidence.
+- **"Podcast mentions" are web search results** that reference podcast episodes — not transcripts or RSS feeds.
+- **Delta tracking can miss topic continuity** when the same story is phrased differently across runs. Jaccard keyword matching degrades on paraphrased headlines; enable `SIMILARITY_METHOD=embeddings` for better matching.
+- **Single-user, single-machine.** SQLite is not suitable for shared multi-user deployments.
 
 ---
 
@@ -173,7 +189,15 @@ Run a full research pipeline and return a structured report.
         "reason": "Source count grew +240% (5 → 17), moved from rank 3 → 1."
       }
     ],
-    "disappeared": ["Topic that dropped off this week"]
+    "disappeared": [],
+    "lifecycle": [
+      {
+        "status": "COOLING",
+        "topic_headline": "Topic that dropped off",
+        "consecutive_missing_runs": 2,
+        "days_since_last_seen": 3.1
+      }
+    ]
   }
 }
 ```
@@ -202,7 +226,7 @@ Mark an item as incorrect. TrendLens excludes flagged headlines from future runs
 
 ### `GET /history/{domain}?limit=10`
 
-Returns recent snapshots for a domain (most recent first).
+Returns recent snapshot summaries for a domain (most recent first).
 
 ### `GET /health`
 
@@ -220,13 +244,13 @@ Returns `{"status": "ok"}`.
 | `ANTHROPIC_FAST_MODEL` | `claude-haiku-4-5-20251001` | Fast model (source discovery) |
 | `OPENAI_API_KEY` | — | Required for OpenAI provider or embedding matching |
 | `OPENAI_MODEL` | `gpt-4o` | OpenAI model |
-| `TAVILY_API_KEY` | — | Tavily web search (recommended) |
-| `BRAVE_API_KEY` | — | Brave Search fallback |
+| `BRAVE_API_KEY` | — | Brave Search (recommended — 2,000 free queries/month) |
+| `TAVILY_API_KEY` | — | Tavily search (1,000 free credits/month; auto-fallback to Brave if both set) |
 | `ENABLE_CACHE` | `true` | In-memory TTL cache |
 | `CACHE_TTL_SECONDS` | `3600` | Cache lifetime (1 hour) |
 | `HISTORY_RETENTION_DAYS` | `90` | Auto-purge snapshots older than N days (`0` = keep forever) |
 | `HISTORY_DB_PATH` | `history.db` | SQLite file path — set to `/data/history.db` in Docker |
-| `DELTA_MIN_GAP_HOURS` | `24` | Minimum hours between runs before delta is computed. Same-day comparisons reflect LLM variance, not real movement. |
+| `DELTA_MIN_GAP_HOURS` | `24` | Minimum hours between runs before delta is computed |
 | `SIMILARITY_METHOD` | `jaccard` | Topic matching: `jaccard` (fast, no cost) or `embeddings` (semantic, requires `OPENAI_API_KEY`) |
 | `DEBUG` | `false` | Verbose logging |
 
@@ -234,27 +258,30 @@ Returns `{"status": "ok"}`.
 
 ## History + Delta
 
-TrendLens saves every run to `history.db` (SQLite) and computes a delta when you run the same domain again — but only after a 24-hour gap. Comparing runs from the same day reflects LLM output variance, not real trend movement.
+TrendLens saves every run to `history.db` and computes a delta after a 24-hour gap. Same-day comparisons reflect LLM output variance, not real trend movement.
 
-The delta engine matches topics using keyword similarity (Jaccard, threshold 0.15). For more accurate matching of paraphrased headlines, enable embedding-based matching:
+**Topic lifecycle:**
+
+| Status | Meaning |
+|--------|---------|
+| `NEW THIS RUN` | Not seen in the previous snapshot |
+| `SPIKING VS LAST RUN` | Evidence count and/or rank improved significantly |
+| `DECLINING` | Evidence count and/or rank dropped significantly |
+| `STABLE BUT IMPORTANT` | Consistently present, no major movement |
+| `WEAK SIGNAL TO WATCH` | Low confidence but tracked across runs |
+| `NOT_DETECTED_THIS_RUN` | Absent from display but still detected in clustering |
+| `COOLING` | Missing from 2–4 consecutive runs |
+| `DORMANT` | Missing 5+ runs or 7+ days since last seen |
+| `DISAPPEARED` | Absent for 14+ days with no cluster evidence |
+
+For more accurate matching of paraphrased headlines, enable embedding-based matching:
 
 ```env
 SIMILARITY_METHOD=embeddings
 OPENAI_API_KEY=sk-...
 ```
 
-**Delta scoring** is based on real search result counts — how many actual URLs from Tavily/Brave matched each topic — not on LLM-reported numbers.
-
-| Badge | Meaning |
-|-------|---------|
-| `NEW THIS RUN` | Topic not seen in the previous snapshot |
-| `SPIKING VS LAST RUN` | Matched URL count and/or rank improved significantly |
-| `DECLINING` | Matched URL count and/or rank dropped significantly |
-| `STABLE BUT IMPORTANT` | Consistently present, no major movement |
-| `WEAK SIGNAL TO WATCH` | Low confidence but tracked across runs |
-| `DISAPPEARED` | Was in the previous run, absent from this one |
-
-The system prefers a snapshot from ~7 days ago for comparison and falls back to the most recent eligible one. See [HISTORY.md](HISTORY.md) for full technical details.
+See [HISTORY.md](HISTORY.md) for full technical details.
 
 ---
 
@@ -274,13 +301,13 @@ trendlens/
 │   ├── db/
 │   │   └── history.py             # SQLite snapshot persistence
 │   ├── services/
-│   │   ├── delta.py               # Topic matching, scoring, classification
+│   │   ├── delta.py               # Topic matching, scoring, lifecycle classification
 │   │   ├── embeddings.py          # OpenAI embedding-based topic matching
 │   │   ├── normalizer.py          # Keyword extraction, Jaccard similarity, source matching
 │   │   ├── report.py              # Markdown export
-│   │   └── web_search.py          # Tavily + Brave search client
+│   │   └── web_search.py          # Brave + Tavily search client with automatic fallback
 │   ├── sources/
-│   │   ├── podcasts.py            # Podcast signal queries
+│   │   ├── podcasts.py            # Podcast mention queries
 │   │   ├── reddit.py              # Reddit signal queries
 │   │   └── web.py                 # Web/news signal queries
 │   ├── api/

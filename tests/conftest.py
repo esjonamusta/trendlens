@@ -17,6 +17,8 @@ def make_topic(
     novelty_score: float = 0.5,
     first_seen_at: str = "",
     last_seen_at: str = "",
+    canonical_topic_id: str = "",
+    weighted_evidence_score: float = 0.0,
 ) -> TopicSnapshot:
     if sources is None:
         sources = ["podcast", "reddit", "web"]
@@ -36,4 +38,6 @@ def make_topic(
         novelty_score=novelty_score,
         first_seen_at=first_seen_at,
         last_seen_at=last_seen_at,
+        canonical_topic_id=canonical_topic_id,
+        weighted_evidence_score=weighted_evidence_score,
     )
