@@ -9,7 +9,7 @@ Thanks for your interest in contributing. This document covers everything you ne
 ### 1. Fork and clone
 
 ```bash
-git clone https://github.com/your-org/trendlens.git
+git clone https://github.com/esjonamusta/trendlens.git
 cd trendlens
 ```
 
@@ -27,7 +27,8 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env — set ANTHROPIC_API_KEY and TAVILY_API_KEY at minimum
+# Edit .env — set ANTHROPIC_API_KEY and BRAVE_API_KEY at minimum
+# Tavily also works; if both are set, Brave is the fallback when Tavily runs out
 ```
 
 ### 4. Run the app
@@ -134,9 +135,9 @@ async def fetch_your_signals(config: ResearchConfig) -> list[QueryResults]:
     return await web_search_service.search_many(queries, max_results_per_query=5)
 ```
 
-2. Import and call it in `app/agents/research_agent.py` alongside the existing sources.
+2. Import and call it in `app/agents/research_agent.py` alongside the existing sources in the `asyncio.gather()` call.
 
-3. Pass the results into `_format_results()` with a label.
+3. Pass the typed `SearchSource` objects into the `search_sources` list before clustering.
 
 ---
 

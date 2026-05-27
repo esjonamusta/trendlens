@@ -4,6 +4,8 @@ Get the **top trending signals for any domain** — sourced from podcasts, Reddi
 
 Run the same domain again tomorrow and see what changed: what spiked, what's new, what's fading.
 
+![TrendLens UI](docs/screenshot.png)
+
 > **How it works:** TrendLens searches the live web, clusters the results by topic, and uses an LLM to write a short summary of each cluster. Headlines are AI-synthesised from real sources — they are not verbatim article titles. Each result links to the underlying search results so you can verify the claim yourself.
 
 ---
@@ -86,7 +88,7 @@ User Input (domain + optional context)
 **Prerequisites:** Python 3.12+, an Anthropic or OpenAI API key, a Brave Search or Tavily API key.
 
 ```bash
-git clone https://github.com/your-org/trendlens.git
+git clone https://github.com/esjonamusta/trendlens.git
 cd trendlens
 make install
 cp .env.example .env   # add your API keys
@@ -98,7 +100,7 @@ Open [http://localhost:8000](http://localhost:8000).
 ### Option B — Docker
 
 ```bash
-git clone https://github.com/your-org/trendlens.git
+git clone https://github.com/esjonamusta/trendlens.git
 cd trendlens
 cp .env.example .env   # add your API keys
 make docker-up

@@ -1,0 +1,1 @@
+Add a screenshot of the TrendLens UI here (PNG, ~1200px wide). Name it screenshot.png.
