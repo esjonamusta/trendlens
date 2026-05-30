@@ -286,6 +286,21 @@
         </div>
       </div>
 
+      <div class="section">
+        <div class="section-label">Email Digest</div>
+        <div class="field">
+          <label>How often should TrendLens email you?</label>
+          <div class="pill-group" id="digest-frequency-group">
+            <button type="button" class="pill" data-value="daily">Daily</button>
+            <button type="button" class="pill active" data-value="weekly">Weekly</button>
+            <button type="button" class="pill" data-value="monthly">Monthly</button>
+            <button type="button" class="pill" data-value="off">Off</button>
+          </div>
+          <input type="hidden" id="digest_frequency" name="digest_frequency" value="weekly"/>
+          <div class="hint">You can change this later from account settings.</div>
+        </div>
+      </div>
+
       <div class="error-banner" id="error-banner"></div>
 
       <button type="submit" class="btn-submit">Create account &amp; start tracking →</button>
@@ -307,6 +322,16 @@
     });
     btn.classList.add('active');
     document.getElementById('business_model').value = btn.getAttribute('data-value');
+  });
+
+  document.getElementById('digest-frequency-group').addEventListener('click', function(e) {
+    var btn = e.target.closest('.pill');
+    if (!btn) return;
+    document.querySelectorAll('#digest-frequency-group .pill').forEach(function(p) {
+      p.classList.remove('active');
+    });
+    btn.classList.add('active');
+    document.getElementById('digest_frequency').value = btn.getAttribute('data-value');
   });
 
   // Tag input — safe DOM methods, no innerHTML with user data

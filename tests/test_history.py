@@ -177,3 +177,40 @@ def test_min_gap_skips_recent_prefers_older():
     )
     assert result is not None
     assert result.run_id == "run-eligible"
+
+
+def test_create_user_stores_digest_frequency():
+    history_module.create_user({
+        "first_name": "Digest",
+        "last_name": "User",
+        "email": "digest@example.com",
+        "password_hash": "hash",
+        "keywords": "[]",
+        "digest_frequency": "monthly",
+    })
+
+    user = history_module.get_user_by_email("digest@example.com")
+    assert user is not None
+    assert user["digest_frequency"] == "monthly"
+
+
+def test_list_digest_users_excludes_off():
+    history_module.create_user({
+        "first_name": "Weekly",
+        "last_name": "User",
+        "email": "weekly@example.com",
+        "password_hash": "hash",
+        "keywords": "[]",
+        "digest_frequency": "weekly",
+    })
+    history_module.create_user({
+        "first_name": "Off",
+        "last_name": "User",
+        "email": "off@example.com",
+        "password_hash": "hash",
+        "keywords": "[]",
+        "digest_frequency": "off",
+    })
+
+    users = history_module.list_digest_users()
+    assert [u["email"] for u in users] == ["weekly@example.com"]

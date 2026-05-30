@@ -419,12 +419,30 @@
     }
     .signup-progress-btn.secondary { background: transparent; color: #94A3B8; border-color: #2D2D30; }
 
-    .share-report {
+    .report-footer {
       background: #1c1b1c;
       border: 1px solid #2D2D30;
       border-radius: 12px;
-      margin-top: 12px;
-      padding: 12px 14px;
+      margin-top: 18px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .report-footer-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .report-footer-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #e5e2e3;
+    }
+    .report-footer-meta { font-size: 11px; color: #94A3B8; }
+    .share-report {
       display: flex;
       align-items: center;
       gap: 10px;
@@ -463,6 +481,12 @@
       cursor: pointer;
       white-space: nowrap;
     }
+    .share-report button.secondary {
+      background: transparent;
+      border-color: #2D2D30;
+      color: #94A3B8;
+    }
+    .share-report button.secondary:hover { color: #e5e2e3; border-color: #3a393a; }
 
     .ex-trend-row { background: #1c1b1c; border: 1px solid #2D2D30; border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: border-color 0.15s; }
     .ex-trend-row:hover { border-color: rgba(34,197,94,0.35); box-shadow: 0 0 0 1px rgba(34,197,94,0.1); }
@@ -713,11 +737,18 @@
       x-text="showAllTrends ? 'Show top 3' : `See more (${moreExTrends().length})`">
     </button>
 
-    <!-- Share current report -->
-    <div class="share-report">
-      <span class="share-report-label">Share report with</span>
-      <input type="email" x-model="shareEmail" placeholder="colleague@company.com">
-      <button type="button" @click="shareReport()">Send report</button>
+    <!-- Report actions -->
+    <div class="report-footer">
+      <div class="report-footer-head">
+        <div class="report-footer-title">Share this report</div>
+        <div class="report-footer-meta" x-text="`${filteredExTrends().length} visible trends`"></div>
+      </div>
+      <div class="share-report">
+        <span class="share-report-label">Send to</span>
+        <input type="email" x-model="shareEmail" placeholder="colleague@company.com">
+        <button type="button" @click="shareReport()">Email report</button>
+        <button type="button" class="secondary" @click="downloadReportCsv()">Download CSV</button>
+      </div>
     </div>
   </div>
 
@@ -1097,6 +1128,35 @@
         );
         const to = this.shareEmail ? encodeURIComponent(this.shareEmail) : '';
         window.location.href = 'mailto:' + to + '?subject=' + subject + '&body=' + body;
+      },
+
+      downloadReportCsv() {
+        const rows = [
+          ['Rank', 'Headline', 'Classification', 'Confidence', 'Score', 'What happened', 'Why it matters', 'PM action'],
+          ...this.filteredExTrends().map((trend, idx) => [
+            String(idx + 1),
+            trend.headline || '',
+            this.exBadgeLabel(trend.classification),
+            trend.confidence || '',
+            String((trend.weighted_evidence_score || 0).toFixed(1)),
+            trend.what_happened || '',
+            trend.why_it_matters || '',
+            trend.pm_action || '',
+          ]),
+        ];
+        const csv = rows.map(row => row.map(value => {
+          const text = String(value).replace(/"/g, '""');
+          return `"${text}"`;
+        }).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `trendlens-${this.exDomain || 'report'}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
       },
     };
   }

@@ -14,6 +14,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from app.core.logger import get_logger
 from app.core.schemas import ResearchConfig
+from app.db import history as history_db
 from app.db import tracked_domains as td_db
 
 log = get_logger(__name__)
@@ -46,6 +47,19 @@ async def run_all_tracked_domains() -> None:
             log.error(f"Scheduler: failed | domain='{domain}' error={exc}", exc_info=True)
 
 
+async def run_email_digest(frequency: str) -> None:
+    """Placeholder digest job. A real email provider can plug in here."""
+    users = history_db.list_digest_users(frequency)
+    if not users:
+        log.info(f"Digest tick — no {frequency} users")
+        return
+    for user in users:
+        log.info(
+            f"Digest queued | frequency={frequency} "
+            f"email={user['email']!r} keywords={user.get('keywords', '')}"
+        )
+
+
 def start() -> None:
     """Add the daily job and start the scheduler. Called once on app startup."""
     scheduler.add_job(
@@ -55,8 +69,32 @@ def start() -> None:
         replace_existing=True,
         max_instances=1,  # prevent overlapping runs
     )
+    scheduler.add_job(
+        run_email_digest,
+        args=["daily"],
+        trigger=IntervalTrigger(hours=24),
+        id="daily_digest",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_email_digest,
+        args=["weekly"],
+        trigger=IntervalTrigger(weeks=1),
+        id="weekly_digest",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_email_digest,
+        args=["monthly"],
+        trigger=IntervalTrigger(days=30),
+        id="monthly_digest",
+        replace_existing=True,
+        max_instances=1,
+    )
     scheduler.start()
-    log.info("Scheduler started — daily research job registered (every 24 h)")
+    log.info("Scheduler started — research and digest jobs registered")
 
 
 def stop() -> None:

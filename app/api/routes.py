@@ -202,9 +202,11 @@ async def signup(
     business_model: str = Form(""),
     product_goal: str = Form(""),
     keywords: str = Form(""),
+    digest_frequency: str = Form("weekly"),
 ) -> RedirectResponse:
     password_hash = hashlib.sha256(password.encode()).hexdigest()
     keyword_list = [k.strip() for k in keywords.split(",") if k.strip()]
+    digest_value = digest_frequency if digest_frequency in {"daily", "weekly", "monthly", "off"} else "weekly"
 
     user_data = {
         "first_name": first_name.strip(),
@@ -216,6 +218,7 @@ async def signup(
         "business_model": business_model,
         "product_goal": product_goal,
         "keywords": json.dumps(keyword_list),
+        "digest_frequency": digest_value,
     }
 
     try:

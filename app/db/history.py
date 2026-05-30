@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS users (
     business_model TEXT DEFAULT '',
     product_goal   TEXT DEFAULT '',
     keywords       TEXT DEFAULT '',
+    digest_frequency TEXT DEFAULT 'weekly',
+    digest_last_sent_at TEXT,
     created_at     TEXT NOT NULL
 );
 """
@@ -83,6 +85,11 @@ def init_db() -> None:
         cols = {row[1] for row in conn.execute("PRAGMA table_info(feedback)")}
         if cols and "user_id" not in cols:
             conn.execute("ALTER TABLE feedback ADD COLUMN user_id INTEGER")
+        user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+        if user_cols and "digest_frequency" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN digest_frequency TEXT DEFAULT 'weekly'")
+        if user_cols and "digest_last_sent_at" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN digest_last_sent_at TEXT")
         conn.executescript(_SCHEMA)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_user_id ON feedback(user_id)")
     log.info("History DB initialised")
@@ -362,8 +369,8 @@ def create_user(data: dict) -> None:
                 INSERT INTO users
                     (first_name, last_name, email, password_hash,
                      product_type, target_users, business_model,
-                     product_goal, keywords, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     product_goal, keywords, digest_frequency, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     data["first_name"],
@@ -375,6 +382,7 @@ def create_user(data: dict) -> None:
                     data.get("business_model", ""),
                     data.get("product_goal", ""),
                     data.get("keywords", ""),
+                    data.get("digest_frequency", "weekly"),
                     now,
                 ),
             )
@@ -415,12 +423,36 @@ def seed_demo_user() -> None:
         "business_model": "B2B",
         "product_goal": "Surface market trends for PMs",
         "keywords": '["AI trends", "fintech", "developer tools"]',
+        "digest_frequency": "weekly",
     }
     try:
         create_user(demo)
         log.info("Demo user seeded | email=demo@trendlens.com")
     except ValueError:
         pass  # already exists — fine
+
+
+def list_digest_users(frequency: str | None = None) -> list[dict]:
+    """Return users with email digests enabled, optionally filtered by frequency."""
+    with _connect() as conn:
+        if frequency:
+            rows = conn.execute(
+                """
+                SELECT * FROM users
+                WHERE digest_frequency = ?
+                ORDER BY created_at DESC
+                """,
+                (frequency,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT * FROM users
+                WHERE COALESCE(digest_frequency, 'weekly') != 'off'
+                ORDER BY created_at DESC
+                """
+            ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def list_snapshots(domain: str, limit: int = 20) -> list[StoredSnapshot]:
