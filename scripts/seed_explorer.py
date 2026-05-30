@@ -214,6 +214,8 @@ RUNS = [
             ("mobile_receipts", "STABLE BUT IMPORTANT", 1, 8, 1.6, 0.55),
             ("card_first", "STABLE BUT IMPORTANT", 2, 7, 1.4, 0.55),
             ("open_source_receipts", "WEAK SIGNAL TO WATCH", 3, 4, 0.8, 0.45),
+            ("zero_touch", "WEAK SIGNAL TO WATCH", 4, 3, 0.6, 0.45),
+            ("receipt_fraud", "WEAK SIGNAL TO WATCH", 5, 2, 0.4, 0.40),
         ],
     },
     {
@@ -222,6 +224,8 @@ RUNS = [
             ("card_first", "SPIKING VS LAST RUN", 1, 13, 2.7, 0.65),
             ("zero_touch", "NEW THIS RUN", 2, 10, 2.3, 0.70),
             ("open_source_receipts", "STABLE BUT IMPORTANT", 3, 6, 1.2, 0.55),
+            ("mobile_receipts", "STABLE BUT IMPORTANT", 4, 5, 1.0, 0.55),
+            ("receipt_fraud", "WEAK SIGNAL TO WATCH", 5, 3, 0.7, 0.50),
         ],
     },
     {
@@ -230,6 +234,8 @@ RUNS = [
             ("zero_touch", "SPIKING VS LAST RUN", 1, 18, 4.3, 0.82),
             ("card_first", "STABLE BUT IMPORTANT", 2, 14, 2.8, 0.68),
             ("receipt_fraud", "NEW THIS RUN", 3, 8, 2.0, 0.90),
+            ("mobile_receipts", "STABLE BUT IMPORTANT", 4, 6, 1.1, 0.58),
+            ("open_source_receipts", "WEAK SIGNAL TO WATCH", 5, 4, 0.9, 0.52),
         ],
     },
     {
@@ -238,6 +244,8 @@ RUNS = [
             ("zero_touch", "STABLE BUT IMPORTANT", 1, 19, 4.4, 0.84),
             ("receipt_fraud", "SPIKING VS LAST RUN", 2, 14, 3.5, 0.95),
             ("card_first", "STABLE BUT IMPORTANT", 3, 13, 2.5, 0.70),
+            ("open_source_receipts", "STABLE BUT IMPORTANT", 4, 7, 1.4, 0.60),
+            ("mobile_receipts", "DECLINING", 5, 5, 0.9, 0.55),
         ],
     },
     {
@@ -246,6 +254,8 @@ RUNS = [
             ("receipt_fraud", "SPIKING VS LAST RUN", 1, 18, 4.6, 0.98),
             ("zero_touch", "STABLE BUT IMPORTANT", 2, 17, 4.0, 0.86),
             ("card_first", "DECLINING", 3, 10, 2.0, 0.66),
+            ("open_source_receipts", "STABLE BUT IMPORTANT", 4, 7, 1.5, 0.62),
+            ("mobile_receipts", "WEAK SIGNAL TO WATCH", 5, 5, 1.0, 0.58),
         ],
     },
 ]

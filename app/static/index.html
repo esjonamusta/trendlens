@@ -34,8 +34,23 @@
       background: rgba(19,19,20,0.95); backdrop-filter: blur(20px);
       position: sticky; top: 0; z-index: 10;
     }
+    .logo { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; }
     .logo-icon { width: 28px; height: 28px; border-radius: 7px; background: #22C55E; display: flex; align-items: center; justify-content: center; font-size: 13px; }
     .logo-text { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .sign-out {
+      margin-left: auto;
+      color: var(--text2);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 7px 13px;
+      background: transparent;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .sign-out:hover { color: var(--text); border-color: var(--brd2); }
 
     /* ── Hero ── */
     .hero { max-width: 580px; margin: 56px auto 0; padding: 0 24px; text-align: center; }
@@ -408,6 +423,7 @@
       background: #1c1b1c;
       border: 1px solid #2D2D30;
       border-radius: 12px;
+      margin-top: 12px;
       padding: 12px 14px;
       display: flex;
       align-items: center;
@@ -513,8 +529,11 @@
      x-text="toastMsg"></div>
 
 <header>
-  <div class="logo-icon">◈</div>
-  <span class="logo-text">TrendLens</span>
+  <a href="/landing.html" class="logo">
+    <div class="logo-icon">◈</div>
+    <span class="logo-text">TrendLens</span>
+  </a>
+  <button type="button" class="sign-out" onclick="signOut()">Sign out</button>
 </header>
 
 <!-- Tab nav removed — Trend Explorer is the only view -->
@@ -575,13 +594,6 @@
   <!-- Personalized hint -->
   <div class="personal-hint" x-show="exMode === 'personalized'">
     ✦ Trends for <strong x-text="exDomain"></strong>. Your 👍 ratings improve personalization over time.
-  </div>
-
-  <!-- Share current report -->
-  <div class="share-report" x-show="!exLoading && filteredExTrends().length > 0">
-    <span class="share-report-label">Share report with</span>
-    <input type="email" x-model="shareEmail" placeholder="colleague@company.com">
-    <button type="button" @click="shareReport()">Send report</button>
   </div>
 
   <!-- Loading -->
@@ -692,11 +704,32 @@
         </div>
       </div>
     </template>
+    <button
+      x-show="moreExTrends().length > 0"
+      type="button"
+      class="domain-chip chip-inactive"
+      style="align-self:center;margin-top:4px;"
+      @click="showAllTrends = !showAllTrends"
+      x-text="showAllTrends ? 'Show top 3' : `See more (${moreExTrends().length})`">
+    </button>
+
+    <!-- Share current report -->
+    <div class="share-report">
+      <span class="share-report-label">Share report with</span>
+      <input type="email" x-model="shareEmail" placeholder="colleague@company.com">
+      <button type="button" @click="shareReport()">Send report</button>
+    </div>
   </div>
 
 </div>
 
 <script>
+  function signOut() {
+    document.cookie = "tl_user_id=; Max-Age=0; Path=/; SameSite=Lax";
+    document.cookie = "tl_user_name=; Max-Age=0; Path=/; SameSite=Lax";
+    window.location.href = "/landing.html";
+  }
+
   // ── Dashboard Alpine.js component ────────────────────────────────────────────
   function dashApp() {
     return {
@@ -709,6 +742,7 @@
       exTrends: [],
       exLoading: false,
       exFeedback: {},
+      showAllTrends: false,
       toastMsg: '',
       toastVisible: false,
       _toastTimer: null,
@@ -927,6 +961,7 @@
         if (!options.silent) {
           this.exLoading = true;
           this.exExpanded = {};
+          this.showAllTrends = false;
         }
         const days = this.exTime === 'yesterday' ? 2
                    : this.exTime === 'today' ? 1
@@ -986,8 +1021,36 @@
       },
 
       filteredExTrends() {
-        if (this.exMode === 'general') return this.exTrends;
-        return this.exTrends.filter(t => this.exFeedback[t.headline] !== 'not_relevant');
+        const trends = this.exMode === 'general'
+          ? this.exTrends
+          : this.exTrends.filter(t => this.exFeedback[t.headline] !== 'not_relevant');
+        if (this.showAllTrends) return trends;
+        return this.demoTopThree(trends);
+      },
+
+      moreExTrends() {
+        const trends = this.exMode === 'general'
+          ? this.exTrends
+          : this.exTrends.filter(t => this.exFeedback[t.headline] !== 'not_relevant');
+        const top = new Set(this.demoTopThree(trends).map(t => t.headline));
+        return trends.filter(t => !top.has(t.headline));
+      },
+
+      demoTopThree(trends) {
+        if (trends.length <= 3) return trends;
+        const picked = [];
+        const hasPicked = trend => picked.some(t => t.headline === trend.headline);
+        const pick = predicate => {
+          const trend = trends.find(t => predicate(t) && !hasPicked(t));
+          if (trend) picked.push(trend);
+        };
+        pick(t => this.exBadgeClass(t.classification) === 'shine-spiking');
+        pick(t => this.exBadgeClass(t.classification) === 'shine-stable');
+        pick(t => this.exBadgeClass(t.classification) === 'shine-declining');
+        trends.forEach(t => {
+          if (picked.length < 3 && !hasPicked(t)) picked.push(t);
+        });
+        return picked;
       },
 
       async submitExFeedback(headline, type) {
