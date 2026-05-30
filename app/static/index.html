@@ -248,14 +248,158 @@
     .sources-grid { display: flex; flex-direction: column; gap: 3px; }
     .sources-grid a { font-size: 12px; color: var(--text3); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 0; transition: color 0.15s; }
     .sources-grid a:hover { color: var(--accent); }
+
+    /* Alpine cloak — hide until Alpine initialises */
+    [x-cloak] { display: none !important; }
+
+    /* ── Tab navigation ── */
+    .tab-nav { display: flex; border-bottom: 1px solid var(--border); padding: 0 32px; background: var(--bg); position: sticky; top: 61px; z-index: 9; }
+    .tab-btn { font-size: 13px; font-weight: 600; font-family: inherit; color: var(--text3); background: none; border: none; border-bottom: 2px solid transparent; padding: 12px 18px; cursor: pointer; transition: color 0.15s, border-color 0.15s; margin-bottom: -1px; }
+    .tab-btn:hover { color: var(--text2); }
+    .tab-btn.active-tab { color: var(--text); border-bottom-color: var(--accent); }
+
+    /* ── Dashboard layout ── */
+    .dashboard { display: flex; height: calc(100vh - 112px); max-width: 1100px; margin: 0 auto; }
+
+    .domain-sidebar { width: 230px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; padding: 16px 0; }
+    .sidebar-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); padding: 0 16px 10px; }
+    .domain-item { display: flex; align-items: center; gap: 9px; padding: 9px 16px; cursor: pointer; transition: background 0.12s; }
+    .domain-item:hover { background: var(--surface); }
+    .domain-item.d-active { background: rgba(124,92,252,0.08); }
+    .domain-item-name { font-size: 13px; color: var(--text2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize; }
+    .domain-item.d-active .domain-item-name { color: var(--text); font-weight: 600; }
+    .d-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .d-done    { background: var(--green); }
+    .d-running { background: var(--accent); animation: blink 1.2s ease-in-out infinite; }
+    .d-error   { background: var(--red); }
+    .d-pending { background: var(--text3); }
+    .sidebar-add { padding: 12px 16px 0; margin-top: auto; border-top: 1px solid var(--border); }
+    .sidebar-add-row { display: flex; gap: 6px; margin-top: 4px; }
+    .sidebar-add-label { font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+    .sidebar-add input { flex: 1; background: var(--srf2); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; font-size: 12px; font-family: inherit; color: var(--text); outline: none; }
+    .sidebar-add input:focus { border-color: var(--accent); }
+    .sidebar-add input::placeholder { color: var(--text3); }
+    .sidebar-add button { font-size: 16px; font-weight: 700; font-family: inherit; background: rgba(124,92,252,0.15); color: var(--accent); border: 1px solid rgba(124,92,252,0.3); border-radius: 7px; padding: 0 11px; cursor: pointer; transition: background 0.15s; }
+    .sidebar-add button:hover { background: rgba(124,92,252,0.25); }
+    .sidebar-empty { font-size: 12px; color: var(--text3); padding: 6px 16px; line-height: 1.5; }
+
+    .domain-detail { flex: 1; overflow-y: auto; padding: 24px 32px; }
+    .detail-empty { font-size: 14px; color: var(--text3); margin-top: 60px; text-align: center; }
+    .detail-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 6px; }
+    .detail-domain { font-size: 19px; font-weight: 800; color: var(--text); letter-spacing: -0.4px; text-transform: capitalize; }
+    .detail-meta-txt { font-size: 12px; color: var(--text3); }
+
+    .dont-miss { background: rgba(124,92,252,0.07); border: 1px solid rgba(124,92,252,0.2); border-radius: var(--r); padding: 16px 18px; margin-bottom: 18px; }
+    .dont-miss-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--accent); margin-bottom: 8px; }
+    .dont-miss-hl { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.4; margin-bottom: 8px; }
+    .dont-miss-row { display: flex; align-items: center; gap: 8px; }
+    .detail-conf { font-size: 11px; color: var(--text3); }
+
+    .dash-topics { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .dash-topic { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; transition: border-color 0.2s; }
+    .dash-topic:hover { border-color: var(--brd2); }
+    .dash-rank { font-size: 11px; font-weight: 700; color: var(--text3); background: var(--srf2); border: 1px solid var(--border); border-radius: 4px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .dash-hl { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; line-height: 1.4; }
+    .dash-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; }
+    .db-new      { background: rgba(124,92,252,0.12); color: #a78bfa; border: 1px solid rgba(124,92,252,0.25); }
+    .db-spiking  { background: rgba(34,197,94,0.10);  color: #22c55e; border: 1px solid rgba(34,197,94,0.25); }
+    .db-declining{ background: rgba(239,68,68,0.08);  color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
+    .db-stable   { background: rgba(245,158,11,0.08); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }
+
+    .run-research-btn { font-size: 13px; font-weight: 600; font-family: inherit; background: rgba(124,92,252,0.12); color: #a78bfa; border: 1px solid rgba(124,92,252,0.25); border-radius: 8px; padding: 9px 18px; cursor: pointer; transition: background 0.15s; }
+    .run-research-btn:hover { background: rgba(124,92,252,0.22); }
   </style>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body>
+<body x-data="dashApp()" x-init="init()">
 
 <header>
   <div class="logo-icon">◈</div>
   <span class="logo-text">TrendLens</span>
 </header>
+
+<!-- ── Tab navigation ── -->
+<nav class="tab-nav">
+  <button class="tab-btn" :class="{'active-tab': tab==='dashboard'}" @click="tab='dashboard'">Dashboard</button>
+  <button class="tab-btn" :class="{'active-tab': tab==='research'}"  @click="tab='research'">Research</button>
+</nav>
+
+<!-- ── Dashboard tab ── -->
+<div x-show="tab==='dashboard'" x-cloak>
+  <div class="dashboard">
+
+    <!-- Left: domain list -->
+    <aside class="domain-sidebar">
+      <div class="sidebar-title">Tracked Domains</div>
+
+      <template x-if="domains.length === 0">
+        <p class="sidebar-empty">No domains tracked yet.<br>Add one below to get started.</p>
+      </template>
+
+      <template x-for="d in domains" :key="d.domain">
+        <div class="domain-item" :class="{'d-active': selected?.domain === d.domain}" @click="selectDomain(d)">
+          <span class="d-dot" :class="dotCls(d.status)"></span>
+          <span class="domain-item-name" x-text="d.domain"></span>
+        </div>
+      </template>
+
+      <div class="sidebar-add">
+        <div class="sidebar-add-label">Track a domain</div>
+        <div class="sidebar-add-row">
+          <input x-model="newDomain" @keydown.enter="addDomain()" placeholder="e.g. fintech compliance" />
+          <button @click="addDomain()">+</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right: domain detail -->
+    <main class="domain-detail">
+      <template x-if="!selected">
+        <p class="detail-empty">Select a tracked domain on the left to see its latest trends.</p>
+      </template>
+
+      <template x-if="selected">
+        <div>
+          <div class="detail-head">
+            <span class="detail-domain" x-text="selected.domain"></span>
+            <span class="detail-meta-txt" x-text="lastRunLabel()"></span>
+          </div>
+
+          <!-- Don't Miss card -->
+          <template x-if="dontMiss">
+            <div class="dont-miss">
+              <div class="dont-miss-lbl">⚡ Don't miss this</div>
+              <div class="dont-miss-hl" x-text="dontMiss.headline"></div>
+              <div class="dont-miss-row">
+                <span class="dash-badge" :class="statusCls(topicStatus(dontMiss))" x-text="topicLabel(dontMiss)"></span>
+                <span class="detail-conf" x-text="(dontMiss.confidence || '') + ' confidence'"></span>
+              </div>
+            </div>
+          </template>
+
+          <!-- Topic list -->
+          <div class="dash-topics">
+            <template x-for="(t, i) in latestTopics" :key="t.canonical_topic_id || i">
+              <div class="dash-topic">
+                <span class="dash-rank" x-text="t.rank || (i + 1)"></span>
+                <span class="dash-hl" x-text="t.headline"></span>
+                <span class="dash-badge" :class="statusCls(topicStatus(t))" x-text="topicLabel(t)"></span>
+              </div>
+            </template>
+            <template x-if="latestTopics.length === 0">
+              <p class="detail-empty" style="margin-top:20px">No research runs yet — click the button below to run now.</p>
+            </template>
+          </div>
+
+          <button class="run-research-btn" @click="tab='research'; fill(selected.domain)">Research this domain →</button>
+        </div>
+      </template>
+    </main>
+  </div>
+</div>
+
+<!-- ── Research tab (existing UI, unchanged) ── -->
+<div x-show="tab==='research'" x-cloak>
 
 <div class="hero">
   <h1>3 things your domain<br>is talking about</h1>
@@ -398,7 +542,107 @@
   <div id="results"></div>
 </div>
 
+</div><!-- end research tab -->
+
 <script>
+  // ── Dashboard Alpine.js component ────────────────────────────────────────────
+  function dashApp() {
+    return {
+      tab: 'dashboard',
+      domains: [],
+      selected: null,
+      latestTopics: [],
+      prevTopics: [],
+      latestSnap: null,
+      newDomain: '',
+
+      async init() {
+        await this.loadDomains();
+        if (this.domains.length > 0) await this.selectDomain(this.domains[0]);
+      },
+
+      async loadDomains() {
+        try {
+          const r = await fetch('/domains');
+          this.domains = await r.json();
+        } catch {}
+      },
+
+      async selectDomain(d) {
+        this.selected = d;
+        this.latestTopics = [];
+        this.prevTopics = [];
+        this.latestSnap = null;
+        try {
+          const r = await fetch(`/history/${encodeURIComponent(d.domain)}?limit=2`);
+          const snaps = await r.json();
+          this.latestSnap = snaps[0] || null;
+          this.latestTopics = (snaps[0]?.topics || []).slice(0, 5);
+          this.prevTopics   = snaps[1]?.topics || [];
+        } catch {}
+      },
+
+      async addDomain() {
+        const d = this.newDomain.trim();
+        if (!d) return;
+        try {
+          const r = await fetch('/domains', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domain: d }),
+          });
+          if (r.ok) {
+            this.newDomain = '';
+            await this.loadDomains();
+            const added = this.domains.find(x => x.domain === d.toLowerCase());
+            if (added) await this.selectDomain(added);
+          }
+        } catch {}
+      },
+
+      topicStatus(topic) {
+        if (!this.prevTopics.length) return 'NEW';
+        const prev = this.prevTopics.find(p =>
+          p.canonical_topic_id && p.canonical_topic_id === topic.canonical_topic_id
+        );
+        if (!prev) return 'NEW';
+        const delta = (prev.rank || 99) - (topic.rank || 99);
+        if (delta >= 2) return 'SPIKING';
+        if (delta <= -2) return 'DECLINING';
+        return 'STABLE';
+      },
+
+      topicLabel(topic) {
+        return { NEW: 'NEW', SPIKING: '↑ SPIKING', DECLINING: '↓ DECLINING', STABLE: 'STABLE' }[this.topicStatus(topic)] || '';
+      },
+
+      statusCls(status) {
+        return { NEW: 'db-new', SPIKING: 'db-spiking', DECLINING: 'db-declining', STABLE: 'db-stable' }[status] || 'db-stable';
+      },
+
+      get dontMiss() {
+        if (!this.latestTopics.length) return null;
+        return [...this.latestTopics].sort((a, b) =>
+          (b.weighted_evidence_score || 0) - (a.weighted_evidence_score || 0)
+        )[0];
+      },
+
+      dotCls(status) {
+        return { done: 'd-done', running: 'd-running', error: 'd-error', pending: 'd-pending' }[status] || 'd-pending';
+      },
+
+      lastRunLabel() {
+        if (!this.latestSnap) return 'No runs yet';
+        const h = Math.floor((Date.now() - new Date(this.latestSnap.created_at)) / 3600000);
+        if (h < 1) return 'Last run: just now';
+        if (h === 1) return 'Last run: 1 hour ago';
+        if (h < 24) return `Last run: ${h} hours ago`;
+        return `Last run: ${Math.floor(h / 24)} day(s) ago`;
+      },
+    };
+  }
+
+  // ── Existing research tab JS (unchanged below) ────────────────────────────────
   document.getElementById("domain").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
   document.getElementById("domain").addEventListener("blur", () => {
     const d = document.getElementById("domain").value.trim();
