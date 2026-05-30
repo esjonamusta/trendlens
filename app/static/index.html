@@ -361,6 +361,30 @@
     .pf-disliked { background: rgba(239,68,68,0.15) !important; color: #ef4444 !important; }
 
     .ex-empty { text-align: center; padding: 48px 24px; color: #7878a0; font-size: 14px; }
+
+    /* ── Expand panel ── */
+    .ex-expand {
+      border-top: 1px solid var(--border);
+      margin-top: 12px; padding-top: 14px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .ex-expand-text { font-size: 13px; color: var(--text2); line-height: 1.65; }
+    .ex-expand-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-bottom: 6px; }
+    .ex-sources { display: flex; flex-direction: column; gap: 6px; }
+    .ex-source-link {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: 12px; color: var(--text2); text-decoration: none;
+      padding: 8px 10px; border-radius: 8px;
+      background: var(--srf2); border: 1px solid var(--border);
+      transition: border-color 0.15s;
+    }
+    .ex-source-link:hover { border-color: rgba(124,92,252,0.3); color: #a78bfa; }
+    .ex-source-icon { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+    .ex-pm-action {
+      background: rgba(124,92,252,0.08); border: 1px solid rgba(124,92,252,0.2);
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 13px; color: #a78bfa; font-weight: 600;
+    }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
@@ -649,28 +673,100 @@
   <!-- Trend rows -->
   <div x-show="!exLoading && filteredExTrends().length > 0" style="display:flex;flex-direction:column;gap:10px;">
     <template x-for="(trend, idx) in filteredExTrends()" :key="trend.headline">
-      <div class="ex-trend-row">
-        <div class="ex-rank" x-text="idx + 1"></div>
-        <div class="ex-info">
-          <div class="ex-title" x-text="trend.headline"></div>
-          <div class="ex-meta" x-text="`${trend.confidence} confidence · score ${(trend.weighted_evidence_score || 0).toFixed(1)}`"></div>
+      <div class="ex-trend-row" :style="exExpanded[trend.headline] ? 'align-items:flex-start;flex-direction:column;' : ''"
+           @click="exExpanded[trend.headline] = !exExpanded[trend.headline]">
+
+        <!-- Main row (always visible) -->
+        <div style="display:flex;align-items:center;gap:16px;width:100%;">
+          <div class="ex-rank" x-text="idx + 1"></div>
+          <div class="ex-info">
+            <div class="ex-title" x-text="trend.headline"></div>
+            <div class="ex-meta" x-text="`${trend.confidence} confidence · score ${(trend.weighted_evidence_score || 0).toFixed(1)}`"></div>
+          </div>
+          <!-- Inline SVG sparkline -->
+          <svg class="ex-sparkline" viewBox="0 0 64 24" preserveAspectRatio="none">
+            <polyline :points="exSparklinePoints(trend.classification).line" fill="none" :stroke="exSparklinePoints(trend.classification).color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline :points="exSparklinePoints(trend.classification).fill" :fill="exSparklinePoints(trend.classification).fillColor" stroke="none"/>
+          </svg>
+          <!-- Badge + feedback -->
+          <div class="ex-right">
+            <div class="shine-btn" :class="exBadgeClass(trend.classification)">
+              <div class="shine-label" x-text="exBadgeLabel(trend.classification)"></div>
+            </div>
+            <div class="pill-feedback">
+              <button class="pf-btn" :class="{ 'pf-liked': exFeedback[trend.headline] === 'relevant' }"
+                @click.stop="submitExFeedback(trend.headline, 'relevant')">👍 Relevant</button>
+              <button class="pf-btn" :class="{ 'pf-disliked': exFeedback[trend.headline] === 'not_relevant' }"
+                @click.stop="submitExFeedback(trend.headline, 'not_relevant')">👎 Not for me</button>
+            </div>
+          </div>
+          <!-- Expand chevron -->
+          <div style="font-size:12px;color:var(--text3);flex-shrink:0;margin-left:4px;" x-text="exExpanded[trend.headline] ? '▲' : '▼'"></div>
         </div>
-        <!-- Inline SVG sparkline -->
-        <svg class="ex-sparkline" viewBox="0 0 64 24" preserveAspectRatio="none">
-          <polyline :points="exSparklinePoints(trend.classification).line" fill="none" :stroke="exSparklinePoints(trend.classification).color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <polyline :points="exSparklinePoints(trend.classification).fill" :fill="exSparklinePoints(trend.classification).fillColor" stroke="none"/>
-        </svg>
-        <!-- Badge + feedback -->
-        <div class="ex-right">
-          <div class="shine-btn" :class="exBadgeClass(trend.classification)">
-            <div class="shine-label" x-text="exBadgeLabel(trend.classification)"></div>
+
+        <!-- Expand panel -->
+        <div class="ex-expand" x-show="exExpanded[trend.headline]" @click.stop style="width:100%;">
+
+          <!-- What happened + why it matters -->
+          <div x-show="trend.what_happened">
+            <div class="ex-expand-label">What happened</div>
+            <div class="ex-expand-text" x-text="trend.what_happened"></div>
           </div>
-          <div class="pill-feedback">
-            <button class="pf-btn" :class="{ 'pf-liked': exFeedback[trend.headline] === 'relevant' }"
-              @click.stop="submitExFeedback(trend.headline, 'relevant')">👍 Relevant</button>
-            <button class="pf-btn" :class="{ 'pf-disliked': exFeedback[trend.headline] === 'not_relevant' }"
-              @click.stop="submitExFeedback(trend.headline, 'not_relevant')">👎 Not for me</button>
+          <div x-show="trend.why_it_matters">
+            <div class="ex-expand-label">Why it matters</div>
+            <div class="ex-expand-text" x-text="trend.why_it_matters"></div>
           </div>
+
+          <!-- PM Action -->
+          <div x-show="trend.pm_action" class="ex-pm-action">
+            💡 <span x-text="trend.pm_action"></span>
+          </div>
+
+          <!-- Podcast sources -->
+          <div x-show="trend.podcast_evidence && trend.podcast_evidence.length > 0">
+            <div class="ex-expand-label">🎙 Podcast mentions</div>
+            <div class="ex-sources">
+              <template x-for="src in trend.podcast_evidence" :key="src.url">
+                <a class="ex-source-link" :href="src.url" target="_blank" rel="noopener" @click.stop>
+                  <span class="ex-source-icon">🎙</span>
+                  <span x-text="src.text"></span>
+                </a>
+              </template>
+            </div>
+          </div>
+
+          <!-- Reddit sources -->
+          <div x-show="trend.reddit_evidence && trend.reddit_evidence.length > 0">
+            <div class="ex-expand-label">💬 Reddit discussions</div>
+            <div class="ex-sources">
+              <template x-for="src in trend.reddit_evidence" :key="src.url">
+                <a class="ex-source-link" :href="src.url" target="_blank" rel="noopener" @click.stop>
+                  <span class="ex-source-icon">💬</span>
+                  <span x-text="src.text"></span>
+                </a>
+              </template>
+            </div>
+          </div>
+
+          <!-- Web sources -->
+          <div x-show="trend.source_links && trend.source_links.length > 0">
+            <div class="ex-expand-label">🌐 Web sources</div>
+            <div class="ex-sources">
+              <template x-for="url in trend.source_links" :key="url">
+                <a class="ex-source-link" :href="url" target="_blank" rel="noopener" @click.stop>
+                  <span class="ex-source-icon">🌐</span>
+                  <span x-text="url.replace('https://', '').replace('http://', '').split('/')[0]"></span>
+                </a>
+              </template>
+            </div>
+          </div>
+
+          <!-- No sources fallback -->
+          <div x-show="(!trend.podcast_evidence || !trend.podcast_evidence.length) && (!trend.reddit_evidence || !trend.reddit_evidence.length) && (!trend.source_links || !trend.source_links.length)"
+               style="font-size:12px;color:var(--text3);">
+            No sources available for this trend yet. Run a fresh research report to populate sources.
+          </div>
+
         </div>
       </div>
     </template>
@@ -691,6 +787,7 @@
       exTrends: [],
       exLoading: false,
       exFeedback: {},
+      exExpanded: {},
       domains: [],
       selected: null,
       latestTopics: [],
@@ -804,6 +901,7 @@
       async loadExTrends() {
         if (!this.exDomain) return;
         this.exLoading = true;
+        this.exExpanded = {};
         const days = this.exTime === 'yesterday' ? 2
                    : this.exTime === 'today' ? 1
                    : this.exTime === 'week' ? 7 : 30;

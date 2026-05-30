@@ -215,14 +215,16 @@ def get_timeline(domain: str, days: int = 30) -> list[dict]:
     """Return snapshots for a domain within the last `days` days, newest first.
 
     Each entry contains run_id, created_at, and a list of topics with
-    headline, rank, weighted_evidence_score, confidence, and classification.
+    headline, rank, weighted_evidence_score, confidence, classification,
+    and source details (what_happened, why_it_matters, pm_action,
+    podcast_evidence, reddit_evidence, source_links) pulled from report_json.
     """
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
     with _connect() as conn:
         rows = conn.execute(
             """
-            SELECT run_id, created_at, topics_json
+            SELECT run_id, created_at, topics_json, report_json
             FROM snapshots
             WHERE domain = ? AND created_at >= ?
             ORDER BY created_at DESC
@@ -233,16 +235,34 @@ def get_timeline(domain: str, days: int = 30) -> list[dict]:
     result = []
     for row in rows:
         topics_raw = json.loads(row["topics_json"])
-        topics = [
-            {
-                "headline": t.get("headline", ""),
+
+        # Build a lookup from headline → full item details from report_json
+        report_raw = json.loads(row["report_json"]) if row["report_json"] else {}
+        report_items = {
+            item["headline"]: item
+            for item in report_raw.get("items", [])
+            if "headline" in item
+        }
+
+        topics = []
+        for t in topics_raw:
+            headline = t.get("headline", "")
+            item = report_items.get(headline, {})
+            topics.append({
+                "headline": headline,
                 "rank": t.get("rank", 0),
                 "weighted_evidence_score": t.get("weighted_evidence_score", 0.0),
                 "confidence": t.get("confidence", "Low"),
                 "classification": t.get("classification", "STABLE BUT IMPORTANT"),
-            }
-            for t in topics_raw
-        ]
+                # Rich source details from report_json
+                "what_happened": item.get("what_happened", ""),
+                "why_it_matters": item.get("why_it_matters", ""),
+                "pm_action": item.get("pm_action", t.get("pm_action", "")),
+                "podcast_evidence": item.get("podcast_evidence", []),
+                "reddit_evidence": item.get("reddit_evidence", []),
+                "source_links": item.get("source_links", []),
+            })
+
         result.append({
             "run_id": row["run_id"],
             "created_at": row["created_at"],
