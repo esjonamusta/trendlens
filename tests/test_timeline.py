@@ -1,18 +1,7 @@
 from __future__ import annotations
 import json, pytest
-from unittest.mock import patch, MagicMock
+from datetime import datetime, timezone
 from app.db import history as history_db
-
-
-def _make_snapshot_row(run_id: str, created_at: str, topics: list[dict]) -> dict:
-    return {
-        "run_id": run_id,
-        "domain": "test-domain",
-        "config_json": "{}",
-        "report_json": "{}",
-        "topics_json": json.dumps(topics),
-        "created_at": created_at,
-    }
 
 
 TOPIC_A = {
@@ -77,9 +66,10 @@ def test_get_timeline_filters_by_days(tmp_path, monkeypatch):
         "INSERT INTO snapshots (run_id, domain, config_json, report_json, topics_json, created_at) VALUES (?,?,?,?,?,?)",
         ("old-run", "test-domain", "{}", "{}", json.dumps([TOPIC_A]), "2025-01-01T00:00:00+00:00"),
     )
+    now_iso = datetime.now(timezone.utc).isoformat()
     conn.execute(
         "INSERT INTO snapshots (run_id, domain, config_json, report_json, topics_json, created_at) VALUES (?,?,?,?,?,?)",
-        ("new-run", "test-domain", "{}", "{}", json.dumps([TOPIC_B]), "2026-05-30T09:00:00+00:00"),
+        ("new-run", "test-domain", "{}", "{}", json.dumps([TOPIC_B]), now_iso),
     )
     conn.commit()
     conn.close()

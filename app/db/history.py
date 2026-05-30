@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.core.config import settings
@@ -212,7 +212,11 @@ def get_profile(domain: str) -> dict | None:
 
 
 def get_timeline(domain: str, days: int = 30) -> list[dict]:
-    from datetime import timedelta
+    """Return snapshots for a domain within the last `days` days, newest first.
+
+    Each entry contains run_id, created_at, and a list of topics with
+    headline, rank, weighted_evidence_score, confidence, and classification.
+    """
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
     with _connect() as conn:
@@ -248,6 +252,11 @@ def get_timeline(domain: str, days: int = 30) -> list[dict]:
 
 
 def save_trend_feedback(domain: str, item_headline: str, feedback_type: str) -> None:
+    """Save relevant/not_relevant feedback for a trend item.
+
+    run_id is stored as an empty string because trend feedback is not tied
+    to a specific research run.
+    """
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
         conn.execute(
@@ -258,6 +267,7 @@ def save_trend_feedback(domain: str, item_headline: str, feedback_type: str) -> 
 
 
 def get_liked_headlines(domain: str) -> list[str]:
+    """Return headlines the user marked as relevant for a domain."""
     with _connect() as conn:
         rows = conn.execute(
             "SELECT item_headline FROM feedback WHERE domain = ? AND feedback_type = 'relevant'",
