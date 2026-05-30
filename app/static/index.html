@@ -335,6 +335,33 @@
     .ex-time-tabs { display: flex; gap: 4px; background: #1c1b1c; border: 1px solid #2D2D30; border-radius: 999px; padding: 4px; }
     .ex-time-tab { padding: 5px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; color: #94A3B8; transition: all 0.15s; border: none; background: transparent; font-family: inherit; }
     .ex-time-tab.time-active { background: #22c55e; color: #003915; font-weight: 700; }
+    .custom-date-row { display: flex; align-items: end; gap: 8px; flex-wrap: wrap; margin-top: -10px; }
+    .custom-date-field { display: flex; flex-direction: column; gap: 5px; }
+    .custom-date-field label { font-size: 10px; font-weight: 700; color: #94A3B8; letter-spacing: 0.06em; text-transform: uppercase; }
+    .custom-date-field input {
+      background: #1c1b1c;
+      border: 1px solid #2D2D30;
+      border-radius: 9px;
+      color: #e5e2e3;
+      font: inherit;
+      font-size: 12px;
+      padding: 8px 10px;
+      color-scheme: dark;
+    }
+    .custom-date-field input:focus { border-color: rgba(34,197,94,0.45); outline: none; }
+    .custom-date-apply {
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 9px;
+      color: #22c55e;
+      cursor: pointer;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 14px;
+    }
+    .custom-date-apply:disabled { opacity: 0.4; cursor: not-allowed; }
+    .custom-date-error { font-size: 11px; color: #ef4444; }
 
     /* Personalized hint — green tint */
     .personal-hint { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2); border-radius: 10px; padding: 10px 14px; font-size: 12px; color: #22c55e; display: flex; align-items: center; gap: 8px; }
@@ -462,18 +489,6 @@
     </div>
   </div>
 
-  <!-- Domain chips -->
-  <div class="domain-chips">
-    <template x-for="d in exDomains" :key="d">
-      <button
-        class="domain-chip"
-        :class="exDomain === d ? 'chip-active' : 'chip-inactive'"
-        @click="exDomain = d; loadExTrends()">
-        <span x-text="d"></span>
-      </button>
-    </template>
-    <button class="domain-chip chip-inactive" @click="tab='dashboard'">+ Add domain</button>
-  </div>
 
   <!-- Controls -->
   <div class="explorer-controls">
@@ -489,10 +504,21 @@
       <button class="ex-time-tab" :class="{ 'time-active': exTime === 'yesterday' }" @click="exTime = 'yesterday'; loadExTrends()">Yesterday</button>
       <button class="ex-time-tab" :class="{ 'time-active': exTime === 'today' }"     @click="exTime = 'today'; loadExTrends()">Today</button>
       <button class="ex-time-tab" :class="{ 'time-active': exTime === 'week' }"      @click="exTime = 'week'; loadExTrends()">This Week</button>
-      <button class="ex-time-tab" :class="{ 'time-active': exTime === 'custom' }" @click="exTime = 'custom'; loadExTrends()" title="Custom range coming soon — shows last 30 days">Custom 📅</button>
+      <button class="ex-time-tab" :class="{ 'time-active': exTime === 'custom' }" @click="selectCustomDates()">Custom 📅</button>
     </div>
   </div>
-  <div x-show="exTime === 'custom'" style="font-size:11px;color:#7878a0;margin-top:-12px;">Custom date picker coming soon — showing last 30 days</div>
+  <div class="custom-date-row" x-show="exTime === 'custom'" x-transition>
+    <div class="custom-date-field">
+      <label for="customStart">Start</label>
+      <input id="customStart" type="date" x-model="customStartDate" :max="customEndDate || todayDate">
+    </div>
+    <div class="custom-date-field">
+      <label for="customEnd">End</label>
+      <input id="customEnd" type="date" x-model="customEndDate" :min="customStartDate" :max="todayDate">
+    </div>
+    <button class="custom-date-apply" type="button" @click="loadExTrends()" :disabled="!customStartDate || !customEndDate">Apply</button>
+    <span class="custom-date-error" x-show="customDateError" x-text="customDateError"></span>
+  </div>
 
   <!-- Personalized hint -->
   <div class="personal-hint" x-show="exMode === 'personalized'">
@@ -627,6 +653,9 @@
       exExpanded: {},
       isNewUser: new URLSearchParams(window.location.search).get('new') === '1',
       signupPollTimer: null,
+      customStartDate: '',
+      customEndDate: '',
+      customDateError: '',
       domains: [],
       selected: null,
       latestTopics: [],
@@ -766,6 +795,27 @@
         window.history.replaceState({}, '', url.pathname + url.search);
       },
 
+      todayIsoDate() {
+        return new Date().toISOString().slice(0, 10);
+      },
+
+      daysAgoIsoDate(days) {
+        const d = new Date();
+        d.setDate(d.getDate() - days);
+        return d.toISOString().slice(0, 10);
+      },
+
+      get todayDate() {
+        return this.todayIsoDate();
+      },
+
+      selectCustomDates() {
+        this.exTime = 'custom';
+        this.customDateError = '';
+        if (!this.customEndDate) this.customEndDate = this.todayIsoDate();
+        if (!this.customStartDate) this.customStartDate = this.daysAgoIsoDate(7);
+      },
+
       async loadExTrends(options = {}) {
         if (!this.exDomain) return;
         if (!options.silent) {
@@ -775,8 +825,28 @@
         const days = this.exTime === 'yesterday' ? 2
                    : this.exTime === 'today' ? 1
                    : this.exTime === 'week' ? 7 : 30;
+        let timelineUrl = `/history/${encodeURIComponent(this.exDomain)}/timeline?days=${days}`;
+        if (this.exTime === 'custom') {
+          if (!this.customStartDate || !this.customEndDate) {
+            this.customDateError = 'Choose both dates.';
+            if (!options.silent) this.exLoading = false;
+            return;
+          }
+          if (this.customStartDate > this.customEndDate) {
+            this.customDateError = 'Start must be before end.';
+            if (!options.silent) this.exLoading = false;
+            return;
+          }
+          this.customDateError = '';
+          const params = new URLSearchParams({
+            start_date: this.customStartDate,
+            end_date: this.customEndDate,
+          });
+          timelineUrl = `/history/${encodeURIComponent(this.exDomain)}/timeline?${params.toString()}`;
+        }
         try {
-          const r = await fetch(`/history/${encodeURIComponent(this.exDomain)}/timeline?days=${days}`);
+          const r = await fetch(timelineUrl);
+          if (!r.ok) throw new Error(await r.text());
           const data = await r.json();
           const latest = data.snapshots?.[0];
           this.exTrends = latest ? latest.topics : [];
