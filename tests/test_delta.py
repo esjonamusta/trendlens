@@ -499,3 +499,102 @@ def test_new_subtopic_reclassified_new_when_novelty_high():
     assert result.insights[0].classification == "NEW THIS RUN", (
         "High-novelty topics matched to an old canonical should surface as NEW"
     )
+
+
+# ── Hybrid matching ───────────────────────────────────────────────────────────
+
+def test_canonical_id_match_overrides_low_jaccard():
+    """Topics with identical canonical_topic_id are matched regardless of keyword phrasing."""
+    current = [make_topic(
+        "AI agents enterprise deployment wave",
+        rank=1,
+        keywords=["agents", "enterprise", "deployment"],
+        canonical_topic_id="stablecanon1",
+    )]
+    previous = [make_topic(
+        "Enterprise agentic workflows adoption surge",
+        rank=2,
+        keywords=["enterprise", "agentic", "workflows", "adoption"],
+        canonical_topic_id="stablecanon1",  # same ID → definitive match
+    )]
+    result = _run_delta(current, previous)
+    # Should be matched (not NEW) because canonical IDs are identical
+    assert "NEW THIS RUN" not in [i.classification for i in result.insights]
+    assert result.disappeared == []
+
+
+def test_domain_overlap_bonus_helps_match_paraphrased_topics():
+    """Shared verified domains boost Jaccard, helping paraphrased topics match."""
+    # Jaccard alone might be below threshold for paraphrased headlines.
+    # With shared domain overlap, the hybrid score should exceed the threshold.
+    current = [make_topic(
+        "Infrastructure tooling platform evolution",
+        rank=1,
+        keywords=["infrastructure", "tooling", "platform", "evolution"],
+        matched_domains=["techcrunch.com", "infoq.com"],
+    )]
+    previous = [make_topic(
+        "Developer platform infrastructure trends",
+        rank=2,
+        keywords=["developer", "platform", "infrastructure", "trends"],
+        matched_domains=["techcrunch.com", "infoq.com"],  # same verified sources
+    )]
+    result = _run_delta(current, previous)
+    # Shared domains boost similarity → should match, not be NEW
+    assert "NEW THIS RUN" not in [i.classification for i in result.insights]
+
+
+def test_no_false_match_from_domain_overlap_alone():
+    """Completely unrelated topics must not match just because they share a popular domain."""
+    current = [make_topic(
+        "Quantum computing financial modelling",
+        rank=1,
+        keywords=["quantum", "computing", "financial", "modelling"],
+        matched_domains=["techcrunch.com"],
+    )]
+    previous = [make_topic(
+        "Frontend build tooling webpack bundling",
+        rank=1,
+        keywords=["frontend", "build", "tooling", "webpack", "bundling"],
+        matched_domains=["techcrunch.com"],  # same domain, completely different topic
+    )]
+    result = _run_delta(current, previous)
+    # Zero keyword overlap → should not match despite shared domain
+    assert "NEW THIS RUN" in [i.classification for i in result.insights]
+
+
+# ── Provenance in delta scoring ───────────────────────────────────────────────
+
+def test_delta_prefers_matched_url_count_over_llm_reported():
+    """Score uses matched_url_count (verified) first, then llm_reported_source_count."""
+    from app.services.delta import compute_trend_delta_score
+    from app.core.schemas import TopicSnapshot
+
+    def _snap(matched: int, llm_reported: int, source_count: int) -> TopicSnapshot:
+        return make_topic(
+            "Agent workflow tooling", rank=1,
+            source_count=source_count,
+            matched_url_count=matched,
+        )
+
+    # Both have matched_url_count set; growth should show positive score
+    prev = _snap(matched=5, llm_reported=10, source_count=15)
+    cur = _snap(matched=15, llm_reported=10, source_count=15)
+    prev.llm_reported_source_count = 10
+    cur.llm_reported_source_count = 10
+
+    score = compute_trend_delta_score(cur, prev)
+    assert score > 0, "Growth in matched_url_count must produce a positive delta score"
+
+
+def test_delta_falls_back_to_llm_reported_when_no_url_match():
+    """When matched_url_count=0, llm_reported_source_count drives the score."""
+    from app.services.delta import compute_trend_delta_score
+
+    prev = make_topic("Agent workflow tooling", rank=1, source_count=5, matched_url_count=0)
+    cur = make_topic("Agent workflow tooling", rank=1, source_count=5, matched_url_count=0)
+    prev.llm_reported_source_count = 5
+    cur.llm_reported_source_count = 15
+
+    score = compute_trend_delta_score(cur, prev)
+    assert score > 0

@@ -73,8 +73,9 @@ class TopicSnapshot(BaseModel):
     source_count: int
     sources: list[str]
     pm_action: str
-    matched_url_count: int = 0          # real count of search result URLs matched to this topic
-    matched_domains: list[str] = []     # unique domains from matched search results
+    matched_url_count: int = 0          # URL-verified count: search result URLs that exactly match item evidence
+    matched_domains: list[str] = []     # unique domains from URL-verified search results
+    llm_reported_source_count: int = 0  # raw count from LLM-reported evidence fields (may be unverified)
     freshness_score: float = 0.5        # average freshness of sources (0.2 stale → 1.0 current-year)
     novelty_score: float = 0.5          # how new this topic is vs history (0.0 repeat → 1.0 novel)
     first_seen_at: str = ""             # ISO timestamp of first appearance in stored history

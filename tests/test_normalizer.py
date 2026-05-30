@@ -5,10 +5,12 @@ import pytest
 
 from app.core.schemas import EvidenceItem, ResearchItem, SearchSource
 from app.services.normalizer import (
+    _normalize_url,
     extract_keywords,
     item_to_topic_snapshot,
     match_topic_to_sources,
     topic_similarity,
+    verify_source_urls,
 )
 
 
@@ -84,11 +86,98 @@ def test_unrelated_topics_have_low_similarity():
     assert score < 0.20, f"Expected < 0.20 but got {score:.3f}"
 
 
-# ── match_topic_to_sources ────────────────────────────────────────────────────
+# ── URL normalization ─────────────────────────────────────────────────────────
+
+def test_normalize_url_lowercases_host():
+    assert _normalize_url("https://TechCrunch.com/post") == "https://techcrunch.com/post"
+
+
+def test_normalize_url_strips_www():
+    assert _normalize_url("https://www.techcrunch.com/post") == "https://techcrunch.com/post"
+
+
+def test_normalize_url_strips_trailing_slash():
+    assert _normalize_url("https://example.com/path/") == "https://example.com/path"
+
+
+def test_normalize_url_preserves_query():
+    result = _normalize_url("https://example.com/search?q=test")
+    assert "q=test" in result
+
+
+def test_normalize_url_handles_invalid_gracefully():
+    # Should not raise; returns something usable
+    result = _normalize_url("not-a-url")
+    assert isinstance(result, str)
+
+
+# ── verify_source_urls (URL-exact matching) ───────────────────────────────────
 
 def _source(title: str, url: str, snippet: str = "", kind: str = "web") -> SearchSource:
     return SearchSource(url=url, title=title, type=kind, snippet=snippet)
 
+
+def test_verify_source_urls_exact_match():
+    """URL appearing in both item sources and search_sources → count=1."""
+    count, domains = verify_source_urls(
+        ["https://techcrunch.com/1"],
+        [_source("Developer tools revealed", "https://techcrunch.com/1")],
+    )
+    assert count == 1
+    assert "techcrunch.com" in domains
+
+
+def test_verify_source_urls_normalized_match():
+    """URL with trailing slash or different case still matches."""
+    count, _ = verify_source_urls(
+        ["https://TechCrunch.com/post/"],
+        [_source("Story", "https://techcrunch.com/post")],
+    )
+    assert count == 1
+
+
+def test_verify_source_urls_no_match():
+    """URL not in search_sources returns count=0 even if keywords overlap."""
+    count, domains = verify_source_urls(
+        ["https://example.com/made-up"],
+        [_source("Developer tools test headline platform", "https://techcrunch.com/1")],
+    )
+    assert count == 0
+    assert domains == []
+
+
+def test_verify_source_urls_multiple_matches():
+    count, domains = verify_source_urls(
+        ["https://techcrunch.com/1", "https://infoq.com/1"],
+        [
+            _source("Story A", "https://techcrunch.com/1"),
+            _source("Story B", "https://infoq.com/1"),
+        ],
+    )
+    assert count == 2
+    assert set(domains) == {"techcrunch.com", "infoq.com"}
+
+
+def test_verify_source_urls_deduplicates_domains():
+    """Two URLs from the same domain count as 2 but deduplicate in domains list."""
+    count, domains = verify_source_urls(
+        ["https://techcrunch.com/1", "https://techcrunch.com/2"],
+        [
+            _source("A", "https://techcrunch.com/1"),
+            _source("B", "https://techcrunch.com/2"),
+        ],
+    )
+    assert count == 2
+    assert domains == ["techcrunch.com"]  # deduplicated
+
+
+def test_verify_source_urls_empty_inputs():
+    assert verify_source_urls([], []) == (0, [])
+    assert verify_source_urls(["https://example.com"], []) == (0, [])
+    assert verify_source_urls([], [_source("A", "https://example.com")]) == (0, [])
+
+
+# ── match_topic_to_sources (keyword-based, weak matching) ─────────────────────
 
 def test_match_finds_relevant_source():
     topic_kws = extract_keywords("Google developer tools announcement")
@@ -158,6 +247,7 @@ def _make_item(
     podcast_evidence: list | None = None,
     reddit_evidence: list | None = None,
     source_links: list | None = None,
+    pm_action: str = "Review and take action immediately.",
 ) -> ResearchItem:
     return ResearchItem(
         headline=headline,
@@ -167,20 +257,37 @@ def _make_item(
         reddit_evidence=[EvidenceItem(text=e) for e in (reddit_evidence or [])],
         source_links=source_links or [],
         confidence=confidence,
-        pm_action="Review and take action immediately.",
+        pm_action=pm_action,
     )
 
 
-def test_snapshot_uses_matched_url_count_when_sources_provided():
-    item = _make_item(source_links=["https://example.com"])
+def test_snapshot_matched_url_count_set_from_url_match():
+    """matched_url_count requires URL-exact match against search_sources."""
+    sources = [
+        _source("Developer tools story A", "https://techcrunch.com/1"),
+        _source("Developer tools story B", "https://infoq.com/1"),
+    ]
+    # item's source_links include the actual search source URLs
+    item = _make_item(source_links=["https://techcrunch.com/1", "https://infoq.com/1"])
+    snap = item_to_topic_snapshot(item, rank=1, search_sources=sources)
+    assert snap.matched_url_count == 2
+    assert "techcrunch.com" in snap.matched_domains
+    assert "infoq.com" in snap.matched_domains
+
+
+def test_keyword_overlap_alone_does_not_set_matched_url_count():
+    """Generic keyword overlap does NOT create verified grounding (matched_url_count=0)."""
+    item = _make_item(source_links=["https://example.com/not-in-sources"])
     sources = [
         _source("Developer tools test headline platform", "https://techcrunch.com/1"),
         _source("Test headline developer tools platform", "https://infoq.com/1"),
     ]
     snap = item_to_topic_snapshot(item, rank=1, search_sources=sources)
-    assert snap.matched_url_count == 2
-    assert "techcrunch.com" in snap.matched_domains
-    assert "infoq.com" in snap.matched_domains
+    # No URL match → matched_url_count is 0 even though keywords overlap
+    assert snap.matched_url_count == 0
+    assert snap.matched_domains == []
+    # LLM-reported count is still tracked separately
+    assert snap.llm_reported_source_count == 1
 
 
 def test_snapshot_falls_back_to_llm_count_when_no_sources():
@@ -201,14 +308,75 @@ def test_snapshot_matched_domains_empty_when_no_sources():
     assert snap.matched_domains == []
 
 
-def test_snapshot_source_count_uses_matched_when_available():
-    item = _make_item()
+def test_snapshot_source_count_uses_url_verified_when_available():
+    """When URL-verified matches exist, source_count == matched_url_count."""
     sources = [
-        _source("Test headline developer tools platform", "https://a.com/1"),
-        _source("Developer tools test platform insights", "https://b.com/1"),
-        _source("Platform tools developer test analysis", "https://c.com/1"),
+        _source("A", "https://a.com/1"),
+        _source("B", "https://b.com/1"),
     ]
+    item = _make_item(source_links=["https://a.com/1", "https://b.com/1"])
     snap = item_to_topic_snapshot(item, rank=2, search_sources=sources)
-    # source_count should equal matched_url_count (real data takes precedence)
+    assert snap.matched_url_count == 2
     assert snap.source_count == snap.matched_url_count
-    assert snap.matched_url_count > 0
+
+
+def test_snapshot_llm_reported_source_count_populated():
+    """llm_reported_source_count tracks raw LLM evidence count independently."""
+    item = _make_item(
+        podcast_evidence=["Podcast A", "Podcast B"],
+        reddit_evidence=["Reddit post"],
+        source_links=["https://example.com/1"],
+    )
+    snap = item_to_topic_snapshot(item, rank=1)
+    # 2 podcast + 1 reddit + 1 web = 4
+    assert snap.llm_reported_source_count == 4
+
+
+def test_snapshot_llm_count_zero_when_no_evidence():
+    item = _make_item()
+    snap = item_to_topic_snapshot(item, rank=1)
+    assert snap.llm_reported_source_count == 0
+
+
+# ── Canonical ID stability ────────────────────────────────────────────────────
+
+def test_canonical_id_stable_when_pm_action_changes():
+    """Same headline + what_happened → same canonical_topic_id regardless of pm_action."""
+    item_a = _make_item(
+        headline="AI compliance tools enterprise deployment",
+        pm_action="Audit your compliance stack immediately.",
+    )
+    item_b = _make_item(
+        headline="AI compliance tools enterprise deployment",
+        pm_action="Schedule a review meeting with your team next week.",
+    )
+    snap_a = item_to_topic_snapshot(item_a, rank=1)
+    snap_b = item_to_topic_snapshot(item_b, rank=1)
+    assert snap_a.canonical_topic_id == snap_b.canonical_topic_id, (
+        "canonical_topic_id must not change when only pm_action wording changes"
+    )
+
+
+def test_canonical_id_differs_for_unrelated_topics():
+    """Different headlines produce different canonical IDs."""
+    item_a = _make_item(headline="AI compliance tools enterprise deployment")
+    item_b = _make_item(headline="Quantum computing financial modelling breakthrough")
+    snap_a = item_to_topic_snapshot(item_a, rank=1)
+    snap_b = item_to_topic_snapshot(item_b, rank=1)
+    assert snap_a.canonical_topic_id != snap_b.canonical_topic_id
+
+
+def test_canonical_id_excludes_pm_action_keywords():
+    """Keywords used for canonical ID must not include pm_action-only words."""
+    item = _make_item(
+        headline="Developer tooling trends",
+        pm_action="Immediately audit all dependency vulnerabilities now.",
+    )
+    snap = item_to_topic_snapshot(item, rank=1)
+    # "immediately", "audit", "vulnerabilities" are pm_action-only — not in headline/what_happened
+    # The what_happened fixture is "Concrete facts about what happened here." so keywords from
+    # it are fine, but pm_action-exclusive words must not appear
+    pm_only_words = {"immediately", "vulnerabilities"}
+    assert not pm_only_words.intersection(set(snap.keywords)), (
+        f"pm_action words leaked into snapshot keywords: {pm_only_words & set(snap.keywords)}"
+    )

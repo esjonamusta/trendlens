@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from app.core.config import settings
 from app.core.schemas import (
     DeltaInsight,
     DeltaReport,
@@ -12,28 +13,39 @@ from app.core.schemas import (
 from app.services.embeddings import EMBED_MATCH_THRESHOLD
 from app.services.normalizer import extract_keywords, topic_similarity
 
-# Jaccard threshold below which two topics are considered different.
-# 0.15 lets paraphrased headlines of the same event match (e.g. different
-# sub-angles of the same conference) while keeping unrelated topics apart.
-_MATCH_THRESHOLD = 0.15
+# ── Configurable thresholds (read from settings so they can be overridden via env) ──
+# Module-level aliases preserve the existing import interface used by tests.
+_MATCH_THRESHOLD: float = settings.match_threshold
+_SPIKE_THRESHOLD: float = settings.spike_threshold
+_DECLINE_THRESHOLD: float = settings.decline_threshold
+_FRESHNESS_REQUIRED: float = settings.freshness_required
 
-# trend_delta_score thresholds for classification
-_SPIKE_THRESHOLD = 0.40
-_DECLINE_THRESHOLD = -0.30
+COOLING_AFTER_MISSING_RUNS: int = settings.cooling_after_missing_runs
+DORMANT_AFTER_MISSING_RUNS: int = settings.dormant_after_missing_runs
+DORMANT_AFTER_DAYS: int = settings.dormant_after_days
+DISAPPEARED_AFTER_DAYS: int = settings.disappeared_after_days
 
 _CONF_RANK = {"High": 3, "Medium": 2, "Low": 1}
 
 
 def _score_components(current: TopicSnapshot, previous: TopicSnapshot) -> ScoreBreakdown:
-    # Use real matched URL counts when available; fall back to LLM-reported source_count
-    cur_count = current.matched_url_count or current.source_count
-    prev_count = previous.matched_url_count or previous.source_count
+    # Prefer URL-verified count; fall back to LLM-reported; last resort: source_count
+    cur_count = (
+        current.matched_url_count
+        or current.llm_reported_source_count
+        or current.source_count
+    )
+    prev_count = (
+        previous.matched_url_count
+        or previous.llm_reported_source_count
+        or previous.source_count
+    )
     src_pct = (cur_count - prev_count) / max(prev_count, 1)
 
     rank_delta = previous.rank - current.rank
     conf_delta = _CONF_RANK.get(current.confidence, 2) - _CONF_RANK.get(previous.confidence, 2)
 
-    # Use real matched domains when available; fall back to source type tags
+    # Use verified domains when available; fall back to source type tags
     cur_domains = set(current.matched_domains) if current.matched_domains else set(current.sources)
     prev_domains = set(previous.matched_domains) if previous.matched_domains else set(previous.sources)
     diversity_delta = len(cur_domains) - len(prev_domains)
@@ -53,7 +65,7 @@ def compute_trend_delta_score(current: TopicSnapshot, previous: TopicSnapshot) -
       < 0  = shrinking / declining
 
     Weights:
-      40%  source-count percentage growth
+      40%  source-count percentage growth (URL-verified preferred)
       25%  rank improvement (prev_rank - cur_rank)
       20%  confidence change
       15%  source-diversity change
@@ -68,13 +80,37 @@ def compute_trend_delta_score(current: TopicSnapshot, previous: TopicSnapshot) -
     )
 
 
-_FRESHNESS_REQUIRED = 0.3  # minimum freshness_score for NEW or SPIKING
+def _hybrid_similarity(cur: TopicSnapshot, prev: TopicSnapshot) -> float:
+    """
+    Hybrid topic similarity combining three signals, in decreasing strength:
 
-# ── Lifecycle thresholds ───────────────────────────────────────────────────────
-COOLING_AFTER_MISSING_RUNS = 2    # 2+ consecutive misses → COOLING
-DORMANT_AFTER_MISSING_RUNS = 5    # 5+ consecutive misses → DORMANT
-DORMANT_AFTER_DAYS = 7            # 7+ days since last seen → DORMANT
-DISAPPEARED_AFTER_DAYS = 14       # 14+ days since last seen → DISAPPEARED
+    1. Canonical ID exact match → 1.0 (definitive — same topic phrase, stable across runs)
+    2. Verified domain overlap bonus (up to +0.20) — shared real sources are strong evidence
+    3. Jaccard keyword similarity as the base signal
+
+    Canonical ID matching is only reliable after the pm_action fix: IDs are now derived
+    from headline+what_happened only, so different PM recommendations for the same event
+    produce the same ID.
+    """
+    # Exact canonical ID match — definitive, no need to score further
+    if (
+        cur.canonical_topic_id
+        and prev.canonical_topic_id
+        and cur.canonical_topic_id == prev.canonical_topic_id
+    ):
+        return 1.0
+
+    cur_kws = frozenset(cur.keywords)
+    prev_kws = frozenset(prev.keywords)
+    jaccard = topic_similarity(cur_kws, prev_kws)
+
+    # Domain overlap bonus: only when both sides have verified domains
+    domain_bonus = 0.0
+    if cur.matched_domains and prev.matched_domains:
+        shared = set(cur.matched_domains) & set(prev.matched_domains)
+        domain_bonus = min(0.20, len(shared) * 0.10)
+
+    return min(1.0, jaccard + domain_bonus)
 
 
 def _classify(delta_score: float, confidence: str, freshness: float = 0.5) -> str:
@@ -95,8 +131,16 @@ def _build_reason(
     current: TopicSnapshot,
     previous: TopicSnapshot,
 ) -> str:
-    cur_count = current.matched_url_count or current.source_count
-    prev_count = previous.matched_url_count or previous.source_count
+    cur_count = (
+        current.matched_url_count
+        or current.llm_reported_source_count
+        or current.source_count
+    )
+    prev_count = (
+        previous.matched_url_count
+        or previous.llm_reported_source_count
+        or previous.source_count
+    )
     src_delta = cur_count - prev_count
     src_pct = round(src_delta / max(prev_count, 1) * 100)
     rank_str = f"rank {previous.rank} → {current.rank}"
@@ -147,7 +191,7 @@ def _topic_in_snap(canonical_id: str, headline_kws: frozenset[str], snap_topics:
     if headline_kws:
         for t in snap_topics:
             t_kws = frozenset(t.get("keywords", []))
-            if t_kws and topic_similarity(headline_kws, t_kws) >= 0.15:
+            if t_kws and topic_similarity(headline_kws, t_kws) >= _MATCH_THRESHOLD:
                 return True
     return False
 
@@ -169,7 +213,7 @@ def _rolling_7d_score(
             cid = t.get("canonical_topic_id", "")
             matched = (cid and cid == canonical_id) or (
                 not cid and headline_kws
-                and topic_similarity(headline_kws, frozenset(t.get("keywords", []))) >= 0.15
+                and topic_similarity(headline_kws, frozenset(t.get("keywords", []))) >= _MATCH_THRESHOLD
             )
             if matched:
                 scores.append(t.get("weighted_evidence_score", 0.0))
@@ -266,22 +310,17 @@ def compute_delta(
     """
     Match topics across two runs and produce ranked delta insights.
 
-    Matching uses greedy bipartite assignment. When similarity_matrix is provided
-    (pre-computed cosine similarities from embeddings), it is used instead of Jaccard.
-    Unmatched current topics → NEW. Unmatched previous topics → DISAPPEARED.
+    Matching priority (when similarity_matrix is not provided):
+      1. Canonical ID exact match — stable identity across paraphrased headlines
+      2. Verified domain overlap bonus added to Jaccard score
+      3. Jaccard keyword similarity as the base signal
+
+    When similarity_matrix is provided (embedding cosine similarities), it takes
+    precedence over the hybrid matcher. Unmatched current topics → NEW.
+    Unmatched previous topics → lifecycle tracking.
     """
     use_embeddings = similarity_matrix is not None
     threshold = EMBED_MATCH_THRESHOLD if use_embeddings else _MATCH_THRESHOLD
-
-    # Pre-compute Jaccard keyword sets (only used as fallback)
-    cur_kws = (
-        None if use_embeddings
-        else [extract_keywords(f"{t.headline} {' '.join(t.keywords)}") for t in current_topics]
-    )
-    prev_kws = (
-        None if use_embeddings
-        else [extract_keywords(f"{t.headline} {' '.join(t.keywords)}") for t in previous_topics]
-    )
 
     matched_prev_indices: set[int] = set()
     matches: list[tuple[int, int | None, float]] = []
@@ -294,7 +333,7 @@ def compute_delta(
             if use_embeddings:
                 sim = similarity_matrix[ci][pi]  # type: ignore[index]
             else:
-                sim = topic_similarity(cur_kws[ci], prev_kws[pi])  # type: ignore[index]
+                sim = _hybrid_similarity(current_topics[ci], previous_topics[pi])
             if sim > best_sim:
                 best_sim, best_pi = sim, pi
         if best_sim >= threshold and best_pi is not None:
@@ -349,8 +388,12 @@ def compute_delta(
             if classification == "STABLE BUT IMPORTANT" and cur.novelty_score >= 0.7:
                 classification = "NEW THIS RUN"
             reason = _build_reason(classification, cur, prev)
-            cur_count = cur.matched_url_count or cur.source_count
-            prev_count = prev.matched_url_count or prev.source_count
+            cur_count = (
+                cur.matched_url_count or cur.llm_reported_source_count or cur.source_count
+            )
+            prev_count = (
+                prev.matched_url_count or prev.llm_reported_source_count or prev.source_count
+            )
             src_delta = cur_count - prev_count
             evidence = [
                 f"Sources: {', '.join(cur.sources) if cur.sources else 'none'}",

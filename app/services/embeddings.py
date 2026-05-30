@@ -8,9 +8,9 @@ log = get_logger(__name__)
 _MODEL = "text-embedding-3-small"
 
 # Cosine similarity threshold for embedding-based topic matching.
-# Empirically, 0.65 catches paraphrases of the same story while rejecting
-# unrelated topics. Jaccard uses 0.20 for comparison.
-EMBED_MATCH_THRESHOLD = 0.65
+# Default 0.65 catches paraphrases while rejecting unrelated topics.
+# Configurable via EMBED_MATCH_THRESHOLD env var / settings.embed_match_threshold.
+EMBED_MATCH_THRESHOLD: float = settings.embed_match_threshold
 
 
 def _cosine(a: list[float], b: list[float]) -> float:

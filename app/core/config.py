@@ -54,6 +54,31 @@ class Settings(BaseSettings):
     #                requires OPENAI_API_KEY; falls back to jaccard if unavailable
     similarity_method: Literal["jaccard", "embeddings"] = "jaccard"
 
+    # Jaccard threshold below which two topics are considered different
+    match_threshold: float = 0.15
+    # Minimum keyword overlap count for a search source to be considered weakly matching a topic
+    source_keyword_min_overlap: int = 2
+
+    # ── Delta classification thresholds ──────────────────────────────────────────
+    # trend_delta_score ≥ this → SPIKING VS LAST RUN
+    spike_threshold: float = 0.40
+    # trend_delta_score ≤ this → DECLINING
+    decline_threshold: float = -0.30
+    # Minimum freshness_score required for NEW or SPIKING classification
+    freshness_required: float = 0.30
+
+    # ── Topic lifecycle thresholds ────────────────────────────────────────────────
+    # Consecutive missed runs before a topic is marked COOLING / DORMANT
+    cooling_after_missing_runs: int = 2
+    dormant_after_missing_runs: int = 5
+    # Days since last seen before a topic is marked DORMANT / DISAPPEARED
+    dormant_after_days: int = 7
+    disappeared_after_days: int = 14
+
+    # ── Embedding-based matching ──────────────────────────────────────────────────
+    # Cosine similarity threshold when similarity_method = "embeddings"
+    embed_match_threshold: float = 0.65
+
     # ── Storage ──────────────────────────────────────────────────────────────────
     history_db_path: str = "history.db"  # override with /data/history.db in Docker
 
