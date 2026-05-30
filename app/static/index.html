@@ -404,6 +404,50 @@
     }
     .signup-progress-btn.secondary { background: transparent; color: #94A3B8; border-color: #2D2D30; }
 
+    .share-report {
+      background: #1c1b1c;
+      border: 1px solid #2D2D30;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .share-report-label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      color: #94A3B8;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .share-report input {
+      flex: 1;
+      min-width: 220px;
+      background: #131314;
+      border: 1px solid #2D2D30;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: #e5e2e3;
+      font-family: inherit;
+      outline: none;
+    }
+    .share-report input:focus { border-color: rgba(34,197,94,0.45); }
+    .share-report button {
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: #22C55E;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
     .ex-trend-row { background: #1c1b1c; border: 1px solid #2D2D30; border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: border-color 0.15s; }
     .ex-trend-row:hover { border-color: rgba(34,197,94,0.35); box-shadow: 0 0 0 1px rgba(34,197,94,0.1); }
     .ex-rank { font-family: "JetBrains Mono", monospace; font-size: 16px; font-weight: 600; color: rgba(255,255,255,0.15); width: 20px; flex-shrink: 0; }
@@ -533,6 +577,13 @@
     ✦ Trends for <strong x-text="exDomain"></strong>. Your 👍 ratings improve personalization over time.
   </div>
 
+  <!-- Share current report -->
+  <div class="share-report" x-show="!exLoading && filteredExTrends().length > 0">
+    <span class="share-report-label">Share report with</span>
+    <input type="email" x-model="shareEmail" placeholder="colleague@company.com">
+    <button type="button" @click="shareReport()">Send report</button>
+  </div>
+
   <!-- Loading -->
   <div class="ex-empty" x-show="exLoading">Loading trends…</div>
 
@@ -638,24 +689,6 @@
             No sources available for this trend yet. Run a fresh research report to populate sources.
           </div>
 
-          <!-- Share via email -->
-          <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2D2D30;display:flex;align-items:center;gap:10px;">
-            <span style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;font-family:'JetBrains Mono',monospace;">Share with</span>
-            <input
-              type="email"
-              placeholder="colleague@company.com"
-              style="flex:1;background:#131314;border:1px solid #2D2D30;border-radius:8px;padding:7px 12px;font-size:13px;color:#e5e2e3;font-family:inherit;outline:none;"
-              :id="'share-input-' + trend.headline.replace(/\s+/g, '-')"
-              @click.stop
-            />
-            <button
-              style="padding:7px 14px;border-radius:999px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#22C55E;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;"
-              @click.stop="shareTrend(trend, $el.previousElementSibling.value)"
-              type="button">
-              ✉ Send
-            </button>
-          </div>
-
         </div>
       </div>
     </template>
@@ -680,6 +713,7 @@
       toastVisible: false,
       _toastTimer: null,
       exExpanded: {},
+      shareEmail: '',
       isNewUser: new URLSearchParams(window.location.search).get('new') === '1',
       signupPollTimer: null,
       customStartDate: '',
@@ -845,6 +879,49 @@
         if (!this.customStartDate) this.customStartDate = this.daysAgoIsoDate(7);
       },
 
+      trendsForSelectedRange(snapshots) {
+        if (!snapshots || snapshots.length === 0) return [];
+
+        if (this.exTime === 'today') {
+          return snapshots[0].topics || [];
+        }
+
+        if (this.exTime === 'yesterday') {
+          const today = this.todayIsoDate();
+          const previous = snapshots.find(s => (s.created_at || '').slice(0, 10) < today);
+          return (previous || snapshots[1] || snapshots[0]).topics || [];
+        }
+
+        const byHeadline = new Map();
+        const classPriority = {
+          'SPIKING VS LAST RUN': 4,
+          'NEW THIS RUN': 3,
+          'DECLINING': 2,
+          'STABLE BUT IMPORTANT': 1,
+          'WEAK SIGNAL TO WATCH': 0,
+        };
+
+        snapshots.forEach(snapshot => {
+          (snapshot.topics || []).forEach(topic => {
+            const existing = byHeadline.get(topic.headline);
+            if (!existing) {
+              byHeadline.set(topic.headline, { ...topic });
+              return;
+            }
+            if ((topic.weighted_evidence_score || 0) > (existing.weighted_evidence_score || 0)) {
+              Object.assign(existing, topic);
+            }
+            if ((classPriority[topic.classification] ?? 0) > (classPriority[existing.classification] ?? 0)) {
+              existing.classification = topic.classification;
+            }
+          });
+        });
+
+        return [...byHeadline.values()]
+          .sort((a, b) => (b.weighted_evidence_score || 0) - (a.weighted_evidence_score || 0))
+          .slice(0, 5);
+      },
+
       async loadExTrends(options = {}) {
         if (!this.exDomain) return;
         if (!options.silent) {
@@ -877,8 +954,7 @@
           const r = await fetch(timelineUrl);
           if (!r.ok) throw new Error(await r.text());
           const data = await r.json();
-          const latest = data.snapshots?.[0];
-          this.exTrends = latest ? latest.topics : [];
+          this.exTrends = this.trendsForSelectedRange(data.snapshots || []);
           if (this.isNewUser && this.exTrends.length > 0) this.dismissSignupProgress();
         } catch(e) {
           console.error('Explorer trends failed', e);
@@ -937,17 +1013,26 @@
         this._toastTimer = setTimeout(() => { this.toastVisible = false; }, 3500);
       },
 
-      shareTrend(trend, email) {
-        const subject = encodeURIComponent('TrendLens Signal: ' + trend.headline);
+      shareReport() {
+        const trends = this.filteredExTrends();
+        const modeLabel = this.exTime === 'week' ? 'This Week'
+          : this.exTime === 'custom' ? `${this.customStartDate} to ${this.customEndDate}`
+          : this.exTime.charAt(0).toUpperCase() + this.exTime.slice(1);
+        const trendText = trends.map((trend, idx) => [
+          `${idx + 1}. ${trend.headline}`,
+          trend.what_happened ? `What happened: ${trend.what_happened}` : '',
+          trend.why_it_matters ? `Why it matters: ${trend.why_it_matters}` : '',
+          trend.pm_action ? `PM action: ${trend.pm_action}` : '',
+        ].filter(Boolean).join('\n')).join('\n\n');
+        const subject = encodeURIComponent('TrendLens Report: ' + this.exDomain);
         const body = encodeURIComponent(
-          'Thought you should see this trend from TrendLens:\n\n' +
-          '📌 ' + trend.headline + '\n\n' +
-          (trend.what_happened ? 'What happened:\n' + trend.what_happened + '\n\n' : '') +
-          (trend.why_it_matters ? 'Why it matters:\n' + trend.why_it_matters + '\n\n' : '') +
-          (trend.pm_action ? '💡 PM action: ' + trend.pm_action + '\n\n' : '') +
-          '— Sent via TrendLens'
+          `Thought you should see this TrendLens report.\n\n` +
+          `Domain: ${this.exDomain}\n` +
+          `Range: ${modeLabel}\n\n` +
+          `${trendText}\n\n` +
+          'Sent via TrendLens'
         );
-        const to = email ? encodeURIComponent(email) : '';
+        const to = this.shareEmail ? encodeURIComponent(this.shareEmail) : '';
         window.location.href = 'mailto:' + to + '?subject=' + subject + '&body=' + body;
       },
     };

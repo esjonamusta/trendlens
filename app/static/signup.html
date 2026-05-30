@@ -77,6 +77,8 @@
     }
     .card-header p { font-size: 14px; color: var(--text2); line-height: 1.5; }
 
+    form { display: flex; flex-direction: column; gap: 30px; }
+
     .section { display: flex; flex-direction: column; gap: 16px; }
     .section-label {
       font-family: "JetBrains Mono", monospace;
@@ -163,10 +165,11 @@
     }
     .tags-wrap input::placeholder { color: var(--text2); }
 
-    .hint { font-size: 11px; color: var(--text2); margin-top: -8px; }
+    .hint { font-size: 11px; color: var(--text2); margin-top: 2px; line-height: 1.45; }
 
     .btn-submit {
       width: 100%; padding: 14px;
+      margin-top: 2px;
       border-radius: var(--r-pill);
       background: var(--green);
       color: #000; font-size: 15px; font-weight: 700;
@@ -229,7 +232,7 @@
           </div>
         </div>
         <div class="field">
-          <label for="email">Work email</label>
+          <label for="email">Email</label>
           <input type="email" id="email" name="email" placeholder="you@company.com" required/>
         </div>
         <div class="field">
@@ -243,18 +246,8 @@
 
         <div class="field">
           <label for="product_type">Type of product</label>
-          <select id="product_type" name="product_type">
-            <option value="" disabled selected>Select a category…</option>
-            <option value="SaaS / Software">SaaS / Software</option>
-            <option value="Marketplace">Marketplace</option>
-            <option value="Developer Tool">Developer Tool</option>
-            <option value="Fintech">Fintech</option>
-            <option value="Healthcare">Healthcare</option>
-            <option value="E-commerce">E-commerce</option>
-            <option value="EdTech">EdTech</option>
-            <option value="Hardware">Hardware</option>
-            <option value="Other">Other</option>
-          </select>
+          <input type="text" id="product_type" name="product_type"
+            placeholder="e.g. SaaS analytics, developer tool, fintech app"/>
         </div>
 
         <div class="field">

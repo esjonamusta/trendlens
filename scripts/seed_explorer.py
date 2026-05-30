@@ -1,216 +1,393 @@
 #!/usr/bin/env python3
-"""Seed history.db with fake trend data for Trend Explorer demo.
+"""Seed history.db with sourced trend data for the Trend Explorer demo.
 
 Run:  python scripts/seed_explorer.py
-Then: make run  → open http://localhost:8000 → Trend Explorer tab
+Then: make run -> open http://localhost:8000/app
 """
 from __future__ import annotations
-import json, sys, uuid
+
+import json
+import sqlite3
+import sys
+import uuid
+from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from app.db import history as history_db
 from app.db import tracked_domains as td_db
 
+
 DOMAIN = "expense management"
 
-TRENDS = [
-    {
-        "rank": 1,
-        "headline": "AI receipt scanning replacing manual entry in B2B finance tools",
-        "keywords": ["ai", "receipt", "scanning", "expense"],
-        "confidence": "High",
-        "source_count": 17,
-        "sources": [],
-        "pm_action": "Audit your receipt flow for AI integration opportunities.",
-        "weighted_evidence_score": 4.2,
-        "classification": "SPIKING VS LAST RUN",
-        "canonical_topic_id": "abc001",
-        "freshness_score": 1.0,
-        "novelty_score": 0.8,
-        "first_seen_at": "",
-        "last_seen_at": "",
-        "matched_url_count": 5,
-        "matched_domains": [],
-        "llm_reported_source_count": 17,
-    },
-    {
-        "rank": 2,
-        "headline": "Multi-currency support becoming table stakes for finance teams",
-        "keywords": ["multi-currency", "finance", "teams"],
-        "confidence": "Medium",
-        "source_count": 11,
-        "sources": [],
-        "pm_action": "Add currency selector to expense submission form.",
-        "weighted_evidence_score": 2.1,
-        "classification": "STABLE BUT IMPORTANT",
-        "canonical_topic_id": "abc002",
-        "freshness_score": 0.7,
-        "novelty_score": 0.3,
-        "first_seen_at": "",
-        "last_seen_at": "",
-        "matched_url_count": 3,
-        "matched_domains": [],
-        "llm_reported_source_count": 11,
-    },
-    {
-        "rank": 3,
-        "headline": "Per-diem reimbursement models losing ground to real-time cards",
-        "keywords": ["per-diem", "reimbursement", "corporate-cards"],
-        "confidence": "Low",
-        "source_count": 6,
-        "sources": [],
-        "pm_action": "Survey users on per-diem vs corporate card preference.",
-        "weighted_evidence_score": 0.9,
-        "classification": "DECLINING",
-        "canonical_topic_id": "abc003",
-        "freshness_score": 0.5,
-        "novelty_score": 0.2,
-        "first_seen_at": "",
-        "last_seen_at": "",
-        "matched_url_count": 1,
-        "matched_domains": [],
-        "llm_reported_source_count": 6,
-    },
-]
-
-# Full report items with realistic sources for the expand panel
-REPORT_ITEMS = [
-    {
-        "headline": "AI receipt scanning replacing manual entry in B2B finance tools",
-        "what_happened": "Three major expense management platforms (Expensify, Ramp, and Brex) shipped AI-powered receipt scanning in the last 30 days. HN threads show 240%+ engagement growth on related discussions. GitHub activity on OCR and receipt-parsing open-source repos is up significantly.",
-        "why_it_matters": "Manual receipt entry is the #1 friction point in your B2B expense flow. Competitors are shipping this now — if you don't, you'll lose deals to tools that do.",
-        "pm_action": "Audit your receipt flow for AI integration opportunities.",
-        "confidence": "High",
-        "grounded": True,
-        "evidence_count": 17,
-        "weighted_evidence_score": 4.2,
-        "unique_domain_count": 9,
-        "freshness_score": 1.0,
-        "novelty_score": 0.8,
-        "first_seen_at": "",
-        "last_seen_at": "",
-        "podcast_evidence": [
-            {"text": "The Changelog ep 612 — AI in finance tooling", "url": "https://changelog.com/podcast/612"},
-            {"text": "Acquired FM — Ramp's product strategy deep dive", "url": "https://www.acquired.fm/episodes/ramp"},
-        ],
-        "reddit_evidence": [
-            {"text": "r/Accounting — \"Finally tried Expensify's AI scanning, blew my mind\"", "url": "https://reddit.com/r/Accounting/comments/ai_receipt"},
-            {"text": "r/smallbusiness — Comparing Ramp vs Brex receipt features", "url": "https://reddit.com/r/smallbusiness/comments/ramp_brex"},
-            {"text": "r/fintech — OCR accuracy benchmarks for expense tools 2026", "url": "https://reddit.com/r/fintech/comments/ocr_benchmark"},
-        ],
-        "source_links": [
-            "https://techcrunch.com/2026/05/ramp-ai-receipts",
-            "https://news.ycombinator.com/item?id=39901234",
-            "https://github.com/anthropics/receipt-ocr",
-            "https://www.infoq.com/news/2026/05/ai-expense-scanning",
-        ],
-    },
-    {
-        "headline": "Multi-currency support becoming table stakes for finance teams",
-        "what_happened": "Reddit threads across r/Accounting and r/fintech show growing frustration with single-currency expense tools. Smaller vendors are shipping multi-currency as a differentiator, with 11 sources mentioning it as a deal-breaker in tool evaluations.",
-        "why_it_matters": "For finance teams operating across borders, single-currency tools are being ruled out at the evaluation stage. This is a retention risk for your enterprise segment.",
-        "pm_action": "Add currency selector to expense submission form.",
-        "confidence": "Medium",
-        "grounded": True,
-        "evidence_count": 11,
-        "weighted_evidence_score": 2.1,
-        "unique_domain_count": 5,
-        "freshness_score": 0.7,
-        "novelty_score": 0.3,
-        "first_seen_at": "",
-        "last_seen_at": "",
-        "podcast_evidence": [
-            {"text": "CFO Thought Leader ep 88 — Global finance stack for SMBs", "url": "https://cfothoughtleader.com/episode/88"},
-        ],
-        "reddit_evidence": [
-            {"text": "r/Accounting — \"We had to switch tools because no multi-currency\"", "url": "https://reddit.com/r/Accounting/comments/multicurrency"},
-            {"text": "r/fintech — Multi-currency expense management comparison 2026", "url": "https://reddit.com/r/fintech/comments/currency_comparison"},
-        ],
-        "source_links": [
-            "https://www.g2.com/categories/expense-management",
-            "https://www.capterra.com/expense-report-software/",
-            "https://techcrunch.com/2026/04/multicurrency-expense",
-        ],
-    },
-    {
-        "headline": "Per-diem reimbursement models losing ground to real-time cards",
-        "what_happened": "6 sources signal a slow but consistent shift away from per-diem reimbursement toward real-time corporate card spending. Reddit discussions suggest finance managers prefer cards for auditability.",
-        "why_it_matters": "If your product is built around per-diem workflows, usage may decline as corporate cards become the default. Worth tracking over the next quarter.",
-        "pm_action": "Survey users on per-diem vs corporate card preference.",
-        "confidence": "Low",
-        "grounded": True,
-        "evidence_count": 6,
-        "weighted_evidence_score": 0.9,
-        "unique_domain_count": 3,
-        "freshness_score": 0.5,
-        "novelty_score": 0.2,
-        "first_seen_at": "",
-        "last_seen_at": "",
-        "podcast_evidence": [],
-        "reddit_evidence": [
-            {"text": "r/Accounting — \"Is per-diem still relevant in 2026?\"", "url": "https://reddit.com/r/Accounting/comments/perdiem_2026"},
-        ],
-        "source_links": [
-            "https://www.theregister.com/2026/03/corporate-cards-replace-perdiem",
-            "https://hbr.org/2026/04/corporate-travel-expense-trends",
-        ],
-    },
-]
-
-REPORT = {
-    "config": {"domain": DOMAIN, "max_items": 3, "time_window_days": 7, "competitors": [], "target_users": "", "geographic_market": ""},
-    "items": REPORT_ITEMS,
-    "generated_at": "",
-    "search_sources": [],
-    "raw_cluster_canonical_ids": [],
-    "run_id": "",
-    "delta": None,
-    "is_baseline": True,
-    "delta_unavailable_reason": "",
+CONFIG = {
+    "domain": DOMAIN,
+    "max_items": 3,
+    "time_window_days": 7,
+    "competitors": ["Ramp", "Brex", "Expensify", "SAP Concur"],
+    "target_users": "finance teams and operations managers",
+    "geographic_market": "US",
 }
 
 
-def seed_run(days_ago: int) -> None:
-    run_id = str(uuid.uuid4())
-    REPORT["run_id"] = run_id
-    created_at = (datetime.now(timezone.utc) - timedelta(days=days_ago)).isoformat()
-    config = {
-        "domain": DOMAIN,
-        "max_items": 3,
-        "time_window_days": 7,
-        "competitors": [],
-        "target_users": "",
-        "geographic_market": "",
+TREND_LIBRARY = {
+    "zero_touch": {
+        "headline": "AI pushes expense reporting toward zero-touch workflows",
+        "keywords": ["ai", "zero-touch", "receipt", "coding", "expense"],
+        "confidence": "High",
+        "sources": ["podcast", "reddit", "web"],
+        "canonical_topic_id": "expense-zero-touch-ai",
+        "pm_action": "Prototype receipt capture that extracts merchant, amount, tax, category, and GL code before the user opens the form.",
+        "what_happened": (
+            "Recent practitioner discussions and vendor coverage point to expense tools moving from receipt upload to automated capture, coding, "
+            "approval routing, and ERP sync. The strongest signals are mobile receipt capture, AI OCR, and automatic GL categorization."
+        ),
+        "why_it_matters": (
+            "Manual entry is becoming the visible failure point in expense products. PMs can differentiate by reducing the workflow to review and exception handling."
+        ),
+        "podcast_evidence": [
+            {
+                "text": "Tearsheet Podcast - Ramp's AI-powered push to automate expense management",
+                "url": "https://podcasts.apple.com/us/podcast/ramps-ai-powered-push-to-automate-expense-management/id423234173?i=1000696750396",
+            },
+            {
+                "text": "Maintenance Care podcast - expense management and corporate card platform discussion",
+                "url": "https://www.maintenancecare.com/podcast-s03e07-mitchell-fratrik",
+            },
+        ],
+        "reddit_evidence": [
+            {
+                "text": "r/Accounting - receipt management discussion highlights text-based receipt capture and OCR automation",
+                "url": "https://www.reddit.com/r/Accounting/comments/1sziu5i/receipt_management/",
+            },
+            {
+                "text": "r/corporatetravel - expense management software thread compares automation, receipt capture, GL coding, and ERP sync",
+                "url": "https://www.reddit.com/r/corporatetravel/comments/1sn7iyv/best_expense_management_software_what_actually/",
+            },
+        ],
+        "source_links": [
+            "https://www.mobilexpense.com/en/blog/expense-management-trends-2026",
+            "https://payhawk.com/en-us/podcast",
+            "https://expenseanywhere.com/zero-touch-expense-reporting-ai-automated-expense-management-2026/",
+        ],
+        "unique_domain_count": 6,
+    },
+    "card_first": {
+        "headline": "Corporate-card-first platforms keep displacing reimbursements",
+        "keywords": ["corporate-card", "reimbursement", "virtual-card", "spend-control"],
+        "confidence": "High",
+        "sources": ["reddit", "web", "podcast"],
+        "canonical_topic_id": "expense-card-first",
+        "pm_action": "Map the reimbursement journey against a card-first flow and identify where policy controls can move before purchase.",
+        "what_happened": (
+            "Reddit and industry coverage show finance teams comparing reimbursement-heavy processes with card-first products from Ramp, Brex, Payhawk, "
+            "Rippling, BILL Spend & Expense, and similar platforms."
+        ),
+        "why_it_matters": (
+            "The buying criterion is shifting from expense report UX to real-time card controls, receipt matching, policy enforcement, and accounting sync."
+        ),
+        "podcast_evidence": [
+            {
+                "text": "Tearsheet Podcast - Ramp CPO discusses AI and unified financial operations",
+                "url": "https://podcasts.apple.com/us/podcast/ramps-ai-powered-push-to-automate-expense-management/id423234173?i=1000696750396",
+            }
+        ],
+        "reddit_evidence": [
+            {
+                "text": "r/Accounting - reimbursement delays thread surfaces pain from personal-card spend and missing receipts",
+                "url": "https://www.reddit.com/r/Accounting/comments/1ohn91k/all_of_our_expense_reimbursements_are_taking_3/",
+            },
+            {
+                "text": "r/corporatetravel - thread compares Ramp, Expensify, Brex, cards, and virtual cards",
+                "url": "https://www.reddit.com/r/corporatetravel/comments/1sn7iyv/best_expense_management_software_what_actually/",
+            },
+        ],
+        "source_links": [
+            "https://www.techradar.com/best/best-expense-trackers",
+            "https://payhawk.com/en-us/podcast",
+            "https://www.businesstravelexecutive.com/news/blockskye-adds-ai-powered-expense-tracking-and-reimbursement-solution/",
+        ],
+        "unique_domain_count": 5,
+    },
+    "receipt_fraud": {
+        "headline": "AI-generated receipts turn expense fraud into a product problem",
+        "keywords": ["ai-generated", "receipt", "fraud", "verification", "audit"],
+        "confidence": "High",
+        "sources": ["web", "reddit"],
+        "canonical_topic_id": "expense-receipt-fraud",
+        "pm_action": "Add receipt authenticity checks, card/merchant matching, and exception review before expanding AI-assisted submissions.",
+        "what_happened": (
+            "New discussions around fake receipt generation and receipt forensics are converging with expense platforms' push toward automation. "
+            "The same AI that reduces filing friction also raises the bar for verification and audit trails."
+        ),
+        "why_it_matters": (
+            "If users can submit polished fake receipts, a faster workflow can amplify fraud. Trust, auditability, and card-data matching should be roadmap items."
+        ),
+        "podcast_evidence": [
+            {
+                "text": "Winners' Circle podcast - Oversight CEO discusses AI monitoring across card spend and T&E",
+                "url": "https://www.iheart.com/podcast/269-winners-circle-329296562/episode/your-company-is-bleeding-money-right-329296571/",
+            }
+        ],
+        "reddit_evidence": [
+            {
+                "text": "r/Dynamics365 - practitioners discuss AI-generated fake expense receipts",
+                "url": "https://www.reddit.com/r/Dynamics365/comments/1q7etqk/have_aigenerated_fake_expense_receipts_come_up_at/",
+            },
+            {
+                "text": "r/smallbusiness - fake expense reports thread discusses controls and card-based systems",
+                "url": "https://www.reddit.com/r/smallbusiness/comments/1pdax88/i_caught_an_employee_submitting_fake_expense/",
+            },
+        ],
+        "source_links": [
+            "https://news.ycombinator.com/item?id=45790677",
+            "https://arxiv.org/abs/2603.11442",
+            "https://www.digitaltransactions.net/wp-content/uploads/2026/05/DT_0526_FINAL.pdf",
+            "https://expensevisor.com/how-ai-is-transforming-expense-management/",
+        ],
+        "unique_domain_count": 6,
+    },
+    "open_source_receipts": {
+        "headline": "Open-source AI receipt tooling gives teams a build-vs-buy option",
+        "keywords": ["open-source", "receipt", "ocr", "self-hosted", "ai"],
+        "confidence": "Medium",
+        "sources": ["web"],
+        "canonical_topic_id": "expense-open-source-receipts",
+        "pm_action": "Benchmark self-hosted receipt OCR projects before committing to a vendor-only extraction roadmap.",
+        "what_happened": (
+            "GitHub results show active interest in self-hosted receipt scanning, AI categorization, and document intelligence for invoices and receipts."
+        ),
+        "why_it_matters": (
+            "Enterprise buyers may ask for privacy-preserving or self-hosted extraction paths. Open-source tools also raise the baseline for commodity OCR features."
+        ),
+        "podcast_evidence": [],
+        "reddit_evidence": [],
+        "source_links": [
+            "https://github.com/vas3k/TaxHacker",
+            "https://github.com/1oannis/budget-lens",
+            "https://github.com/Receipt-Wrangler",
+            "https://github.com/opencollective/opencollective/issues/6865",
+            "https://github.com/renefichtmueller/PaperCortex",
+        ],
+        "unique_domain_count": 2,
+    },
+    "mobile_receipts": {
+        "headline": "Mobile-first receipt capture remains the adoption wedge",
+        "keywords": ["mobile", "receipt", "capture", "employee", "adoption"],
+        "confidence": "Medium",
+        "sources": ["reddit", "web"],
+        "canonical_topic_id": "expense-mobile-receipts",
+        "pm_action": "Design the receipt flow around instant mobile prompts instead of monthly report assembly.",
+        "what_happened": (
+            "User discussions repeatedly frame receipt capture as an employee-compliance problem, not just a finance workflow problem. "
+            "The strongest products collect receipts at the point of spend."
+        ),
+        "why_it_matters": (
+            "Finance teams care about complete records, but employees care about avoiding extra work. Mobile prompts can improve compliance before audit time."
+        ),
+        "podcast_evidence": [],
+        "reddit_evidence": [
+            {
+                "text": "r/Accounting - receipt management thread emphasizes employee friction and timely submission",
+                "url": "https://www.reddit.com/r/Accounting/comments/1sziu5i/receipt_management/",
+            },
+            {
+                "text": "r/smallbusiness - users ask for corporate-card-integrated apps and mobile upload",
+                "url": "https://www.reddit.com/r/smallbusiness/comments/1kn9pzo/expense_management_softwares/",
+            },
+        ],
+        "source_links": [
+            "https://www.mobilexpense.com/en/blog/expense-management-trends-2026",
+            "https://payhawk.com/en-us/podcast",
+        ],
+        "unique_domain_count": 4,
+    },
+}
+
+
+RUNS = [
+    {
+        "days_ago": 14,
+        "topics": [
+            ("mobile_receipts", "STABLE BUT IMPORTANT", 1, 8, 1.6, 0.55),
+            ("card_first", "STABLE BUT IMPORTANT", 2, 7, 1.4, 0.55),
+            ("open_source_receipts", "WEAK SIGNAL TO WATCH", 3, 4, 0.8, 0.45),
+        ],
+    },
+    {
+        "days_ago": 7,
+        "topics": [
+            ("card_first", "SPIKING VS LAST RUN", 1, 13, 2.7, 0.65),
+            ("zero_touch", "NEW THIS RUN", 2, 10, 2.3, 0.70),
+            ("open_source_receipts", "STABLE BUT IMPORTANT", 3, 6, 1.2, 0.55),
+        ],
+    },
+    {
+        "days_ago": 3,
+        "topics": [
+            ("zero_touch", "SPIKING VS LAST RUN", 1, 18, 4.3, 0.82),
+            ("card_first", "STABLE BUT IMPORTANT", 2, 14, 2.8, 0.68),
+            ("receipt_fraud", "NEW THIS RUN", 3, 8, 2.0, 0.90),
+        ],
+    },
+    {
+        "days_ago": 1,
+        "topics": [
+            ("zero_touch", "STABLE BUT IMPORTANT", 1, 19, 4.4, 0.84),
+            ("receipt_fraud", "SPIKING VS LAST RUN", 2, 14, 3.5, 0.95),
+            ("card_first", "STABLE BUT IMPORTANT", 3, 13, 2.5, 0.70),
+        ],
+    },
+    {
+        "days_ago": 0,
+        "topics": [
+            ("receipt_fraud", "SPIKING VS LAST RUN", 1, 18, 4.6, 0.98),
+            ("zero_touch", "STABLE BUT IMPORTANT", 2, 17, 4.0, 0.86),
+            ("card_first", "DECLINING", 3, 10, 2.0, 0.66),
+        ],
+    },
+]
+
+
+def _confidence_source_count(confidence: str, default: int) -> int:
+    if confidence == "High":
+        return max(default, 3)
+    if confidence == "Medium":
+        return max(default, 2)
+    return max(default, 1)
+
+
+def build_item(key: str, evidence_count: int, weighted_score: float, freshness: float) -> dict:
+    base = deepcopy(TREND_LIBRARY[key])
+    base["evidence_count"] = evidence_count
+    base["weighted_evidence_score"] = weighted_score
+    base["freshness_score"] = freshness
+    base["novelty_score"] = 0.6
+    base["grounded"] = True
+    return {
+        "headline": base["headline"],
+        "what_happened": base["what_happened"],
+        "why_it_matters": base["why_it_matters"],
+        "podcast_evidence": base["podcast_evidence"],
+        "reddit_evidence": base["reddit_evidence"],
+        "source_links": base["source_links"],
+        "confidence": base["confidence"],
+        "pm_action": base["pm_action"],
+        "grounded": base["grounded"],
+        "evidence_count": base["evidence_count"],
+        "weighted_evidence_score": base["weighted_evidence_score"],
+        "unique_domain_count": base["unique_domain_count"],
+        "freshness_score": base["freshness_score"],
+        "novelty_score": base["novelty_score"],
+        "first_seen_at": "",
+        "last_seen_at": "",
     }
-    import sqlite3
-    conn = sqlite3.connect(history_db.DB_PATH)
-    conn.execute(
-        "INSERT OR IGNORE INTO snapshots "
-        "(run_id, domain, config_json, report_json, topics_json, created_at) "
-        "VALUES (?,?,?,?,?,?)",
-        (run_id, DOMAIN, json.dumps(config), json.dumps(REPORT), json.dumps(TRENDS), created_at),
-    )
-    conn.commit()
-    conn.close()
-    print(f"  Seeded run {run_id[:8]}… ({days_ago} days ago)")
+
+
+def build_topic(
+    key: str,
+    classification: str,
+    rank: int,
+    source_count: int,
+    weighted_score: float,
+    freshness: float,
+) -> dict:
+    base = TREND_LIBRARY[key]
+    return {
+        "rank": rank,
+        "headline": base["headline"],
+        "keywords": base["keywords"],
+        "confidence": base["confidence"],
+        "source_count": _confidence_source_count(base["confidence"], source_count),
+        "sources": base["sources"],
+        "pm_action": base["pm_action"],
+        "weighted_evidence_score": weighted_score,
+        "classification": classification,
+        "canonical_topic_id": base["canonical_topic_id"],
+        "freshness_score": freshness,
+        "novelty_score": 0.7 if classification == "NEW THIS RUN" else 0.35,
+        "first_seen_at": "",
+        "last_seen_at": "",
+        "matched_url_count": min(source_count, len(base["source_links"]) + len(base["reddit_evidence"]) + len(base["podcast_evidence"])),
+        "matched_domains": [],
+        "llm_reported_source_count": source_count,
+    }
+
+
+def build_search_sources(items: list[dict]) -> list[dict]:
+    sources: list[dict] = []
+    seen: set[str] = set()
+    for item in items:
+        for ev in item["podcast_evidence"]:
+            if ev["url"] not in seen:
+                seen.add(ev["url"])
+                sources.append({"url": ev["url"], "title": ev["text"], "type": "podcast", "snippet": ""})
+        for ev in item["reddit_evidence"]:
+            if ev["url"] not in seen:
+                seen.add(ev["url"])
+                sources.append({"url": ev["url"], "title": ev["text"], "type": "reddit", "snippet": ""})
+        for url in item["source_links"]:
+            if url not in seen:
+                seen.add(url)
+                sources.append({"url": url, "title": url, "type": "web", "snippet": ""})
+    return sources
+
+
+def seed_run(run: dict) -> None:
+    run_id = str(uuid.uuid4())
+    created_at = (datetime.now(timezone.utc) - timedelta(days=run["days_ago"])).isoformat()
+
+    topics = [
+        build_topic(key, classification, rank, source_count, weighted_score, freshness)
+        for key, classification, rank, source_count, weighted_score, freshness in run["topics"]
+    ]
+    items = [
+        build_item(key, source_count, weighted_score, freshness)
+        for key, _classification, _rank, source_count, weighted_score, freshness in run["topics"]
+    ]
+    for item in items:
+        item["first_seen_at"] = created_at
+        item["last_seen_at"] = created_at
+    for topic in topics:
+        topic["first_seen_at"] = created_at
+        topic["last_seen_at"] = created_at
+
+    report = {
+        "config": CONFIG,
+        "items": items,
+        "generated_at": created_at,
+        "search_sources": build_search_sources(items),
+        "raw_cluster_canonical_ids": [topic["canonical_topic_id"] for topic in topics],
+        "run_id": run_id,
+        "delta": None,
+        "is_baseline": run["days_ago"] == 14,
+        "delta_unavailable_reason": "",
+    }
+
+    with sqlite3.connect(history_db.DB_PATH) as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO snapshots "
+            "(run_id, domain, config_json, report_json, topics_json, created_at) "
+            "VALUES (?,?,?,?,?,?)",
+            (run_id, DOMAIN, json.dumps(CONFIG), json.dumps(report), json.dumps(topics), created_at),
+        )
+    print(f"  Seeded sourced run {run_id[:8]} ({run['days_ago']} days ago)")
 
 
 if __name__ == "__main__":
-    # Clear old seeded data first
-    import sqlite3
     history_db.init_db()
     td_db.init_db()
-    conn = sqlite3.connect(history_db.DB_PATH)
-    conn.execute("DELETE FROM snapshots WHERE domain = ?", (DOMAIN,))
-    conn.commit()
-    conn.close()
+
+    with sqlite3.connect(history_db.DB_PATH) as conn:
+        conn.execute("DELETE FROM snapshots WHERE domain = ?", (DOMAIN,))
 
     td_db.add_domain(DOMAIN)
-    print(f"Seeding domain: '{DOMAIN}'")
-    for days_ago in [0, 1, 3, 7, 14]:
-        seed_run(days_ago)
-    print("\nDone! Now run:")
+    print(f"Seeding sourced demo domain: {DOMAIN!r}")
+    for demo_run in RUNS:
+        seed_run(demo_run)
+
+    print("\nDone. Now run:")
     print("  make run")
-    print("  Open http://localhost:8000 → click 'Trend Explorer'")
+    print("  Open http://localhost:8000/app")

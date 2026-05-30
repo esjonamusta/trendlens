@@ -53,16 +53,6 @@
     .card-header h1 { font-family: "Plus Jakarta Sans", sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
     .card-header p { font-size: 14px; color: var(--text2); line-height: 1.5; }
 
-    .demo-hint {
-      background: var(--green-dim);
-      border: 1px solid var(--green-brd);
-      border-radius: var(--r-card);
-      padding: 12px 16px;
-      font-size: 12px; color: var(--green);
-      display: flex; flex-direction: column; gap: 3px;
-    }
-    .demo-hint strong { font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
-
     .field { display: flex; flex-direction: column; gap: 6px; }
     .field label { font-size: 12px; font-weight: 600; color: var(--text2); }
     .field input {
@@ -120,12 +110,6 @@
     <div class="card-header">
       <h1>Sign in</h1>
       <p>Welcome back. Sign in to see your trend signals.</p>
-    </div>
-
-    <div class="demo-hint">
-      <strong>Demo credentials</strong>
-      <span>Email: demo@trendlens.com</span>
-      <span>Password: demo1234</span>
     </div>
 
     <form method="POST" action="/login" id="login-form">

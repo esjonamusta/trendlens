@@ -79,6 +79,37 @@ def test_get_timeline_filters_by_days(tmp_path, monkeypatch):
     assert result[0]["run_id"] == "new-run"
 
 
+def test_get_timeline_filters_by_date_range(tmp_path, monkeypatch):
+    db_file = tmp_path / "test.db"
+    monkeypatch.setattr(history_db, "DB_PATH", db_file)
+    history_db.init_db()
+
+    import sqlite3
+    conn = sqlite3.connect(db_file)
+    conn.execute(
+        "INSERT INTO snapshots (run_id, domain, config_json, report_json, topics_json, created_at) VALUES (?,?,?,?,?,?)",
+        ("before", "test-domain", "{}", "{}", json.dumps([TOPIC_A]), "2026-05-01T09:00:00+00:00"),
+    )
+    conn.execute(
+        "INSERT INTO snapshots (run_id, domain, config_json, report_json, topics_json, created_at) VALUES (?,?,?,?,?,?)",
+        ("inside", "test-domain", "{}", "{}", json.dumps([TOPIC_B]), "2026-05-15T09:00:00+00:00"),
+    )
+    conn.execute(
+        "INSERT INTO snapshots (run_id, domain, config_json, report_json, topics_json, created_at) VALUES (?,?,?,?,?,?)",
+        ("after", "test-domain", "{}", "{}", json.dumps([TOPIC_A]), "2026-05-30T09:00:00+00:00"),
+    )
+    conn.commit()
+    conn.close()
+
+    result = history_db.get_timeline(
+        "test-domain",
+        start_date="2026-05-10",
+        end_date="2026-05-20",
+    )
+    assert len(result) == 1
+    assert result[0]["run_id"] == "inside"
+
+
 from fastapi.testclient import TestClient
 from main import app
 import sqlite3
@@ -129,6 +160,41 @@ def test_timeline_endpoint_returns_snapshots(tmp_path, monkeypatch):
     data = response.json()
     assert len(data["snapshots"]) == 1
     assert data["snapshots"][0]["topics"][0]["headline"] == "AI agents rising"
+
+
+def test_timeline_endpoint_accepts_date_range(tmp_path, monkeypatch):
+    import app.db.history as history_db
+    import json
+    db_file = tmp_path / "test.db"
+    monkeypatch.setattr(history_db, "DB_PATH", db_file)
+    history_db.init_db()
+
+    conn = sqlite3.connect(db_file)
+    conn.execute(
+        "INSERT INTO snapshots (run_id, domain, config_json, report_json, topics_json, created_at) VALUES (?,?,?,?,?,?)",
+        ("run1", "developer-experience", "{}", "{}", json.dumps([TOPIC_A]), "2026-05-10T09:00:00+00:00"),
+    )
+    conn.execute(
+        "INSERT INTO snapshots (run_id, domain, config_json, report_json, topics_json, created_at) VALUES (?,?,?,?,?,?)",
+        ("run2", "developer-experience", "{}", "{}", json.dumps([TOPIC_B]), "2026-05-20T09:00:00+00:00"),
+    )
+    conn.commit()
+    conn.close()
+
+    response = client.get("/history/developer-experience/timeline?start_date=2026-05-15&end_date=2026-05-25")
+    assert response.status_code == 200
+    data = response.json()
+    assert [s["run_id"] for s in data["snapshots"]] == ["run2"]
+
+
+def test_timeline_endpoint_rejects_partial_date_range():
+    response = client.get("/history/developer-experience/timeline?start_date=2026-05-15")
+    assert response.status_code == 400
+
+
+def test_timeline_endpoint_rejects_inverted_date_range():
+    response = client.get("/history/developer-experience/timeline?start_date=2026-05-20&end_date=2026-05-15")
+    assert response.status_code == 400
 
 
 def test_trend_feedback_endpoint_returns_204(tmp_path, monkeypatch):

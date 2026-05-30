@@ -231,26 +231,47 @@ def get_profile(domain: str) -> dict | None:
     return json.loads(row["profile_json"]) if row else None
 
 
-def get_timeline(domain: str, days: int = 30) -> list[dict]:
-    """Return snapshots for a domain within the last `days` days, newest first.
+def get_timeline(
+    domain: str,
+    days: int = 30,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> list[dict]:
+    """Return snapshots for a domain, newest first.
 
     Each entry contains run_id, created_at, and a list of topics with
     headline, rank, weighted_evidence_score, confidence, classification,
     and source details (what_happened, why_it_matters, pm_action,
     podcast_evidence, reddit_evidence, source_links) pulled from report_json.
     """
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    if start_date and end_date:
+        start_bound = f"{start_date}T00:00:00+00:00"
+        end_bound = f"{end_date}T23:59:59+00:00"
+    else:
+        start_bound = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        end_bound = None
 
     with _connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT run_id, created_at, topics_json, report_json
-            FROM snapshots
-            WHERE domain = ? AND created_at >= ?
-            ORDER BY created_at DESC
-            """,
-            (domain.strip().lower(), cutoff),
-        ).fetchall()
+        if end_bound:
+            rows = conn.execute(
+                """
+                SELECT run_id, created_at, topics_json, report_json
+                FROM snapshots
+                WHERE domain = ? AND created_at >= ? AND created_at <= ?
+                ORDER BY created_at DESC
+                """,
+                (domain.strip().lower(), start_bound, end_bound),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT run_id, created_at, topics_json, report_json
+                FROM snapshots
+                WHERE domain = ? AND created_at >= ?
+                ORDER BY created_at DESC
+                """,
+                (domain.strip().lower(), start_bound),
+            ).fetchall()
 
     result = []
     for row in rows:
