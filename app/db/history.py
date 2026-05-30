@@ -371,6 +371,37 @@ def get_user_by_email(email: str) -> dict | None:
     return dict(row) if row else None
 
 
+def verify_user(email: str, password_hash: str) -> dict | None:
+    """Return user row if email + password_hash match, else None."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM users WHERE email = ? AND password_hash = ?",
+            (email.strip().lower(), password_hash),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def seed_demo_user() -> None:
+    """Ensure the demo account exists. Safe to call on every startup."""
+    import hashlib as _hl
+    demo = {
+        "first_name": "Demo",
+        "last_name": "User",
+        "email": "demo@trendlens.com",
+        "password_hash": _hl.sha256(b"demo1234").hexdigest(),
+        "product_type": "SaaS / Software",
+        "target_users": "Product managers",
+        "business_model": "B2B",
+        "product_goal": "Surface market trends for PMs",
+        "keywords": '["AI trends", "fintech", "developer tools"]',
+    }
+    try:
+        create_user(demo)
+        log.info("Demo user seeded | email=demo@trendlens.com")
+    except ValueError:
+        pass  # already exists — fine
+
+
 def list_snapshots(domain: str, limit: int = 20) -> list[StoredSnapshot]:
     with _connect() as conn:
         rows = conn.execute(

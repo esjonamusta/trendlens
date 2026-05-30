@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import json
 
-from fastapi import APIRouter, BackgroundTasks, Cookie, Form, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Cookie, Form, HTTPException, Query
 from fastapi.responses import PlainTextResponse, RedirectResponse
 
 from app.core.logger import get_logger
@@ -162,8 +162,24 @@ async def get_timeline(
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@router.post("/login", include_in_schema=False)
+async def login(
+    email: str = Form(...),
+    password: str = Form(...),
+) -> RedirectResponse:
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    user = await asyncio.to_thread(history_db.verify_user, email.strip().lower(), password_hash)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+    response = RedirectResponse("/app", status_code=303)
+    response.set_cookie("tl_user_id", str(user["id"]), max_age=60 * 60 * 24 * 30, httponly=True, samesite="lax")
+    response.set_cookie("tl_user_name", user["first_name"], max_age=60 * 60 * 24 * 30, samesite="lax")
+    return response
+
+
 @router.post("/signup", include_in_schema=False)
 async def signup(
+    background_tasks: BackgroundTasks,
     first_name: str = Form(...),
     last_name: str = Form(...),
     email: str = Form(...),
@@ -200,8 +216,27 @@ async def signup(
         except Exception:
             pass  # domain already tracked — fine
 
+    # Kick off research for each keyword in the background so results are
+    # ready (or running) by the time the user lands on /app
+    async def _run_research_for_keywords(domains: list[str], users: str, goal: str) -> None:
+        for domain in domains:
+            try:
+                config = ResearchConfig(
+                    domain=domain,
+                    target_users=users,
+                    time_window_days=7,
+                )
+                await run_research(config, use_cache=False)
+                log.info(f"Signup research complete | domain='{domain}'")
+            except Exception as exc:
+                log.error(f"Signup research failed | domain='{domain}': {exc}")
+
+    if keyword_list:
+        background_tasks.add_task(_run_research_for_keywords, keyword_list, target_users, product_goal)
+
     user = await asyncio.to_thread(history_db.get_user_by_email, user_data["email"])
-    response = RedirectResponse("/app", status_code=303)
+    # Redirect to /app?new=1 so the Explorer knows to show a loading state
+    response = RedirectResponse("/app?new=1", status_code=303)
     response.set_cookie("tl_user_id", str(user["id"]), max_age=60 * 60 * 24 * 30, httponly=True, samesite="lax")
     response.set_cookie("tl_user_name", user_data["first_name"], max_age=60 * 60 * 24 * 30, samesite="lax")
     return response

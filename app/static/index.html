@@ -340,6 +340,43 @@
     .personal-hint { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2); border-radius: 10px; padding: 10px 14px; font-size: 12px; color: #22c55e; display: flex; align-items: center; gap: 8px; }
 
     /* Trend rows */
+    .signup-progress {
+      background: rgba(34,197,94,0.07);
+      border: 1px solid rgba(34,197,94,0.22);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .signup-progress-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .signup-spinner {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid rgba(34,197,94,0.22);
+      border-top-color: #22c55e;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .signup-progress-title { font-size: 13px; font-weight: 700; color: #e5e2e3; margin-bottom: 2px; }
+    .signup-progress-copy { font-size: 12px; color: #94A3B8; line-height: 1.45; }
+    .signup-progress-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .signup-progress-btn {
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 999px;
+      padding: 7px 12px;
+      cursor: pointer;
+      background: rgba(34,197,94,0.12);
+      color: #22c55e;
+    }
+    .signup-progress-btn.secondary { background: transparent; color: #94A3B8; border-color: #2D2D30; }
+
     .ex-trend-row { background: #1c1b1c; border: 1px solid #2D2D30; border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: border-color 0.15s; }
     .ex-trend-row:hover { border-color: rgba(34,197,94,0.35); box-shadow: 0 0 0 1px rgba(34,197,94,0.1); }
     .ex-rank { font-family: "JetBrains Mono", monospace; font-size: 16px; font-weight: 600; color: rgba(255,255,255,0.15); width: 20px; flex-shrink: 0; }
@@ -407,6 +444,23 @@
 
 <!-- ── Trend Explorer Tab ── -->
 <div x-show="tab==='explorer'" x-cloak class="explorer-page">
+
+  <!-- Signup research progress -->
+  <div class="signup-progress" x-show="isNewUser" x-transition>
+    <div class="signup-progress-main">
+      <div class="signup-spinner" aria-hidden="true"></div>
+      <div>
+        <div class="signup-progress-title">Building your first trend reports</div>
+        <div class="signup-progress-copy">
+          Research is running in the background for your signup keywords. This page will refresh as results arrive.
+        </div>
+      </div>
+    </div>
+    <div class="signup-progress-actions">
+      <button class="signup-progress-btn" type="button" @click="loadExTrends()">Refresh</button>
+      <button class="signup-progress-btn secondary" type="button" @click="dismissSignupProgress()">Dismiss</button>
+    </div>
+  </div>
 
   <!-- Domain chips -->
   <div class="domain-chips">
@@ -571,6 +625,8 @@
       exLoading: false,
       exFeedback: {},
       exExpanded: {},
+      isNewUser: new URLSearchParams(window.location.search).get('new') === '1',
+      signupPollTimer: null,
       domains: [],
       selected: null,
       latestTopics: [],
@@ -580,6 +636,7 @@
 
       async init() {
         await this.initExplorer();
+        if (this.isNewUser) this.startSignupPolling();
       },
 
       async loadDomains() {
@@ -680,10 +737,41 @@
         }
       },
 
-      async loadExTrends() {
+      startSignupPolling() {
+        if (this.signupPollTimer) return;
+        this.signupPollTimer = setInterval(() => {
+          if (!this.isNewUser) {
+            clearInterval(this.signupPollTimer);
+            this.signupPollTimer = null;
+            return;
+          }
+          this.loadExTrends({ silent: true });
+        }, 8000);
+        setTimeout(() => {
+          if (this.signupPollTimer) {
+            clearInterval(this.signupPollTimer);
+            this.signupPollTimer = null;
+          }
+        }, 120000);
+      },
+
+      dismissSignupProgress() {
+        this.isNewUser = false;
+        if (this.signupPollTimer) {
+          clearInterval(this.signupPollTimer);
+          this.signupPollTimer = null;
+        }
+        const url = new URL(window.location.href);
+        url.searchParams.delete('new');
+        window.history.replaceState({}, '', url.pathname + url.search);
+      },
+
+      async loadExTrends(options = {}) {
         if (!this.exDomain) return;
-        this.exLoading = true;
-        this.exExpanded = {};
+        if (!options.silent) {
+          this.exLoading = true;
+          this.exExpanded = {};
+        }
         const days = this.exTime === 'yesterday' ? 2
                    : this.exTime === 'today' ? 1
                    : this.exTime === 'week' ? 7 : 30;
@@ -692,11 +780,12 @@
           const data = await r.json();
           const latest = data.snapshots?.[0];
           this.exTrends = latest ? latest.topics : [];
+          if (this.isNewUser && this.exTrends.length > 0) this.dismissSignupProgress();
         } catch(e) {
           console.error('Explorer trends failed', e);
-          this.exTrends = [];
+          if (!options.silent) this.exTrends = [];
         }
-        this.exLoading = false;
+        if (!options.silent) this.exLoading = false;
       },
 
       exBadgeClass(classification) {

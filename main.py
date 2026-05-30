@@ -74,11 +74,24 @@ def create_app() -> FastAPI:
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
         )
 
+    @app.get("/login.html", include_in_schema=False)
+    async def login_page() -> FileResponse:
+        return FileResponse(
+            "app/static/login.html",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
+
     @app.on_event("startup")
     async def _startup() -> None:
         history_db.init_db()
         history_db.purge_old_snapshots(settings.history_retention_days)
         td_db.init_db()
+        history_db.seed_demo_user()
+        for kw in ["AI trends", "fintech", "developer tools"]:
+            try:
+                td_db.add_domain(kw)
+            except Exception:
+                pass
         sched.start()
         log.info(
             f"[{settings.app_name}] v{settings.app_version} starting | "
