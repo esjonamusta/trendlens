@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import PlainTextResponse
-
-from fastapi import BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Query
+from fastapi.responses import PlainTextResponse, RedirectResponse
 
 from app.core.logger import get_logger
 from app.core.pipeline import run_research
@@ -158,6 +158,47 @@ async def get_timeline(
     except Exception as exc:
         log.error(f"Timeline lookup failed for domain='{domain}': {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/signup", include_in_schema=False)
+async def signup(
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    product_type: str = Form(""),
+    target_users: str = Form(""),
+    business_model: str = Form(""),
+    product_goal: str = Form(""),
+    keywords: str = Form(""),
+) -> RedirectResponse:
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    keyword_list = [k.strip() for k in keywords.split(",") if k.strip()]
+
+    user_data = {
+        "first_name": first_name.strip(),
+        "last_name": last_name.strip(),
+        "email": email.strip().lower(),
+        "password_hash": password_hash,
+        "product_type": product_type,
+        "target_users": target_users,
+        "business_model": business_model,
+        "product_goal": product_goal,
+        "keywords": json.dumps(keyword_list),
+    }
+
+    try:
+        await asyncio.to_thread(history_db.create_user, user_data)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Email already registered.")
+
+    for keyword in keyword_list:
+        try:
+            await asyncio.to_thread(td_db.add_domain, keyword)
+        except Exception:
+            pass  # domain already tracked — fine
+
+    return RedirectResponse("/", status_code=303)
 
 
 @router.post("/trend-feedback", status_code=204)
