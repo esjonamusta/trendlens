@@ -401,15 +401,7 @@
   <span class="logo-text">TrendLens</span>
 </header>
 
-<!-- ── Tab navigation ── -->
-<nav class="tab-nav">
-  <button class="tab-btn" :class="{'active-tab': tab==='dashboard'}" @click="tab='dashboard'">Dashboard <span class="tab-sub">saved · auto-updated</span></button>
-  <button class="tab-btn" :class="{'active-tab': tab==='research'}"  @click="tab='research'">Run Research <span class="tab-sub">on-demand · any domain</span></button>
-  <button class="tab-btn" :class="{'active-tab': tab==='explorer'}" @click="tab='explorer'; initExplorer()">Trend Explorer</button>
-  <a href="/landing.html" style="margin-left: auto; display: flex; align-items: center; padding: 10px 18px; text-decoration: none;">
-    <button class="tab-btn" style="margin: 0; border: none; background: none; margin-bottom: 0;">Landing Page <span class="tab-sub">learn more</span></button>
-  </a>
-</nav>
+<!-- Tab nav removed — Trend Explorer is the only view -->
 
 <!-- ── Dashboard tab ── -->
 <div x-show="tab==='dashboard'" x-cloak>

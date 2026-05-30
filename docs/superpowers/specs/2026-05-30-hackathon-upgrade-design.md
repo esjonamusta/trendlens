@@ -259,21 +259,136 @@ An interactive visualization layer that lets PMs explore how trends have moved o
 ```
 
 ### Explorer Features
-- **Time range selector:** 7d / 30d / 90d toggle
+- **Time range selector:** 4 separate tabs — Yesterday | Today | This Week | Custom 📅
 - **Top trends list:** ranked by average `weighted_evidence_score` over the selected period, with a sparkline per topic
-- **Week comparison panel:** side-by-side view of this week vs last week — what moved up, down, or disappeared
 - **Topic detail view:** click any topic → full evidence history with source list per run
 
+### Agreed UI Design (locked in brainstorming session 2026-05-30)
+
+**Time range tabs:**
+- 4 separate pill tabs: `Yesterday` | `Today` | `This Week` | `Custom 📅`
+- Contained in a single rounded pill container (dark background, subtle border)
+- Active tab: purple fill (`#7c5cfc`), white text
+- Inactive tabs: muted grey text, hover shows slight highlight
+
+**Trend status labels — 3 labels only:**
+- `⬆ Spiking` — green (`#22c55e`)
+- `→ Stable` — amber (`#f59e0b`)
+- `⬇ Declining` — red (`#ef4444`)
+- These map to the codebase classifications: Spiking = `SPIKING VS LAST RUN`, Stable = `STABLE BUT IMPORTANT`, Declining = `DECLINING`
+- No standalone label row — badges appear only on each trend row (right side)
+
+**Trend row layout (horizontal):**
+```
+[ Trend title + meta ]  [ sparkline ]  [ shiny badge ]
+```
+- Background: `#16161f`, border-radius 12px, padding 14px 18px
+- Title: 14px, medium weight, white
+- Meta: 11px, muted (`#7878a0`) — shows source count, confidence, sources used
+- Sparkline: 72×26px SVG inline, colored by status (green/amber/red), with subtle fill
+
+**Shiny border badge (CSS technique — border-only shine):**
+- Outer wrapper: `overflow: hidden`, `border-radius: 999px`, no padding except 1.5px gap
+- `::before` pseudo-element: `conic-gradient` rotating spotlight — creates the shine on the border only
+- `::after` pseudo-element: solid dark background (`inset: 1.5px`) — covers the interior so shine only shows on the border ring
+- Label sits above both pseudo-elements via `z-index: 2`
+- Each status has its own speed: Spiking 2.5s, Stable 3.5s, Declining 2.0s
+- Inner background colors: Spiking `#0d1f14`, Stable `#1f1608`, Declining `#200d0d`
+- Label padding: 5px 14px, 11px font, bold
+
+**CSS for the shine (exact implementation):**
+```css
+.shine-btn::before {
+  content: "";
+  position: absolute;
+  inset: -100%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%, transparent 35%,
+    var(--shine) 48%, white 50%, var(--shine) 52%,
+    transparent 65%, transparent 100%
+  );
+  animation: spin var(--speed) linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.shine-btn::after {
+  content: "";
+  position: absolute;
+  inset: 1.5px;
+  border-radius: 999px;
+  background: var(--bg);
+}
+```
+
+**What was explicitly removed:**
+- No standalone "Trend Status" section label above the badges
+- No large badge row in the middle of the page — badges only on trend rows
+- No 7d / 30d / 90d toggles — replaced with Yesterday / Today / This Week / Custom
+
+**Trend row layout (final — with feedback):**
+```
+[ Rank ]  [ Title + meta ]  [ Sparkline ]  [ Badge + Feedback pill ]
+```
+- Right side is stacked vertically: shine badge on top, feedback pill below
+
+**Feedback pill (Option B — agreed):**
+- Style: pill toggle inside a dark rounded container
+- Two options side by side: `👍 Relevant` and `👎 Not for me`
+- Active state: green tint for relevant (`rgba(34,197,94,0.15)`, text `#22c55e`), red tint for not relevant
+- Inactive: dark background, muted text
+- CSS:
+```css
+.pill-feedback { display:flex; background:#16161f; border-radius:999px; padding:3px; gap:2px; border:1px solid rgba(255,255,255,0.06); }
+.pf-btn { padding:4px 11px; border-radius:999px; font-size:11px; font-weight:700; cursor:pointer; color:#7878a0; }
+.pf-btn.active-up   { background:rgba(34,197,94,0.15); color:#22c55e; }
+.pf-btn.active-down { background:rgba(239,68,68,0.15); color:#ef4444; }
+```
+
+**Personalization logic:**
+- Personalized tab shows trends matched to user's sign-up profile (keywords, product type, user type)
+- Over time, 👍 / 👎 ratings improve the personalization — liked trends surface more, disliked trends are suppressed
+- Personalized hint bar shows: "Matched to your profile — [keywords]. Your ratings improve this over time."
+- General tab shows all trends unfiltered, no match tags, no hint bar
+
+**Two mode tabs:**
+- `✦ Personalized` with tag "For you" (purple tint when active)
+- `🌐 General` with tag "All trends" (grey when active)
+- Contained in a dark rounded card `#0f0f17`, border-radius 12px
+
+**Post-login flow:**
+- After login → straight to Trend Explorer page
+- Domains pre-populated from sign-up keywords
+- Welcome banner at top: "Welcome to TrendLens, [name] 👋 — We've already run your first report based on your product profile."
+- Dismiss button on banner
+
+**Domain selector (top of Trend Explorer):**
+- Horizontal pill chips for each tracked domain
+- Active domain: purple tint (`rgba(124,92,252,0.12)`), purple border, purple text
+- Inactive: dark background, muted text
+- `+ Add domain` chip at the end
+
+**Nav (post-login):**
+- Left: Logo
+- Center: `Trend Explorer` | `Run Research` tabs
+- Right: Avatar circle with user initials (purple gradient)
+
 ### Chart.js Usage
-- Sparklines: `type: 'line'`, no axes, `tension: 0.4`, minimal styling
-- Week comparison: `type: 'bar'`, grouped bars per topic
-- Topic detail: `type: 'line'` with hover tooltips showing source count
+- Sparklines: inline SVG (not Chart.js) — `polyline` with colored stroke and subtle fill
+- Topic detail (on click): `type: 'line'` Chart.js with hover tooltips showing source count
+
+### Backend — Feedback Storage
+- New SQLite table: `user_feedback (id, user_id, domain, trend_headline, feedback, created_at)`
+- `POST /feedback` already exists — extend to store `relevant` / `not_relevant` instead of just `incorrect`
+- Personalized tab filters trends by: keyword match from profile + positive feedback history
 
 ### Day 1 Target
 Full explorer UI with seeded `history.db` data (3–5 fake runs). All charts rendering and interactive.
 
 ### Day 2 Target
-Live `GET /history/{domain}/timeline` endpoint wired in.
+Live `GET /history/{domain}/timeline` endpoint wired in. Feedback wired to backend.
 
 ---
 
@@ -377,6 +492,84 @@ No build step. Both added as `<script>` tags to `index.html`. Existing vanilla J
 | 3 | Dashboard wired to live `/domains` and `/history` |
 | 4 | Timeline endpoint live, explorer fully wired |
 | 5 | Digest auto-triggered by scheduler |
+
+---
+
+## Home Page & Login (agreed 2026-05-30)
+
+### Layout
+- Two-column grid: `1fr 400px`, max-width 1100px, centered, 60px padding from nav
+- Left column: hero copy + feature list
+- Right column: login card
+- Vertically centered on the page
+
+### Nav
+- Logo only (icon + "TrendLens" text) — **no login button in nav**
+- Logo icon: 30×30px rounded square, purple gradient (`#7c5cfc → #4f46e5`)
+- Subtle bottom border (`rgba(255,255,255,0.06)`)
+
+### Left — Hero Copy
+- Eyebrow pill: `✦ Built for Product Managers` — purple tint bg, purple border, `width: fit-content`
+- H1: `"Stay ahead of what's trending in your domain"` — gradient text (white fading to 55% white), 800 weight, -1.5px letter spacing
+- Subtext: 15px, muted (`#b8b8cc`), max-width 420px
+- 3 feature rows below, each with:
+  - Purple-tinted icon box (32×32px, rounded 8px)
+  - Bold 13px title + 12px muted description
+
+**Feature copy:**
+1. 📡 Real signals, not noise — "Sourced from HN, Reddit, GitHub, and the web. Ranked by engagement, not recency."
+2. 📈 Track what changes — "Run it again tomorrow and see what spiked, what's new, and what's fading."
+3. 📬 Daily digest — "Get a morning email summarising your domains — no manual searching required."
+
+### Right — Login Card
+- Background: `#0f0f17`, border `rgba(255,255,255,0.08)`, border-radius 20px, padding 36px 32px
+- Title: `Welcome back 👋` (20px, 700 weight)
+- Subtitle: `Sign in to your workspace` (13px, muted)
+- Email field + Password field — dark input (`#16161f`), focus ring purple
+- Primary CTA: `Sign in →` — full-width, purple gradient button
+- Divider: `or`
+- Secondary CTA: `Continue with Google` — outline button with Google logo SVG
+- Footer: `Don't have an account? Sign up free` (purple link)
+- **No login button in the nav** — the card is the only login entry point
+
+### What was removed
+- Nav "Log in" button — redundant since card is always visible
+- Extra vertical space above the eyebrow pill
+
+---
+
+## Sign-Up & Personalisation Page (agreed 2026-05-30, details TBD)
+
+### Layout
+- Single page (not multi-step) — all fields on one scroll
+- Centered card, max-width 580px, same dark card style as login (`#0f0f17`, border-radius 20px)
+- Same nav as home page (logo only)
+
+### Sections & Fields
+
+**Account**
+- First name + Last name (two columns)
+- Work email
+- Password
+
+**Your Product**
+- Type of product (dropdown): SaaS/Software, Marketplace, Developer Tool, Fintech, Healthcare, E-commerce, EdTech, Hardware, Other
+- Who are your users? (free text — e.g. "students, enterprise engineers, small business owners")
+- Business model (pill toggles): B2B | B2C | Both | B2B2C
+- Goal of your product (textarea — e.g. "Help finance teams automate expense reporting")
+
+**Trend Interests**
+- Keywords (tag input — type and press Enter to add, ✕ to remove)
+- Hint text: "These shape which signals TrendLens surfaces for you."
+
+### CTA
+- `Create account & start tracking →` — full width purple gradient button
+- Footer: `Already have an account? Sign in`
+
+### Notes
+- Exact field copy and dropdown options to be refined later
+- Pill toggles: clicking activates purple tint style, others go inactive
+- Keyword tags: purple tint pill with ✕ remove button
 
 ---
 
