@@ -53,6 +53,13 @@ def create_app() -> FastAPI:
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
         )
 
+    @app.get("/landing.html", include_in_schema=False)
+    async def landing() -> FileResponse:
+        return FileResponse(
+            "app/static/landing.html",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
+
     @app.on_event("startup")
     async def _startup() -> None:
         history_db.init_db()
