@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TrendLens — Create Account</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #131314;
+      --surface:    #1C1C1F;
+      --border:     #2D2D30;
+      --text:       #e5e2e3;
+      --text2:      #94A3B8;
+      --green:      #22C55E;
+      --green-dim:  rgba(34,197,94,0.12);
+      --green-brd:  rgba(34,197,94,0.35);
+      --purple:     #818CF8;
+      --purple-dim: rgba(129,140,248,0.12);
+      --purple-brd: rgba(129,140,248,0.35);
+      --r-card:     12px;
+      --r-pill:     999px;
+    }
+
+    html, body { width: 100%; min-height: 100vh; }
+
+    body {
+      font-family: "Inter", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header {
+      position: sticky; top: 0; z-index: 10;
+      height: 64px;
+      background: rgba(19,19,20,0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 32px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .logo-icon {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: var(--green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+    }
+    .logo-text {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 16px; font-weight: 700; letter-spacing: -0.3px;
+    }
+
+    .page {
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 48px 24px 80px;
+      min-height: calc(100vh - 64px);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      width: 100%; max-width: 560px;
+      display: flex; flex-direction: column; gap: 32px;
+    }
+
+    .card-header { display: flex; flex-direction: column; gap: 6px; }
+    .card-header h1 {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 24px; font-weight: 700; letter-spacing: -0.5px;
+    }
+    .card-header p { font-size: 14px; color: var(--text2); line-height: 1.5; }
+
+    .section { display: flex; flex-direction: column; gap: 16px; }
+    .section-label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text2);
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 12px; font-weight: 600; color: var(--text2); }
+    .field input,
+    .field textarea,
+    .field select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r-card);
+      padding: 11px 14px;
+      font-size: 14px; color: var(--text);
+      font-family: "Inter", sans-serif;
+      outline: none; width: 100%;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field input::placeholder,
+    .field textarea::placeholder { color: var(--text2); }
+    .field input:focus,
+    .field textarea:focus,
+    .field select:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(129,140,248,0.12);
+    }
+    .field textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+    .field select { appearance: none; cursor: pointer; }
+    .field select option { background: var(--surface); }
+
+    .pill-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill {
+      padding: 7px 16px; border-radius: var(--r-pill);
+      border: 1px solid var(--border);
+      font-size: 12px; font-weight: 600; color: var(--text2);
+      cursor: pointer; background: transparent;
+      font-family: "Inter", sans-serif;
+      transition: all 0.15s;
+    }
+    .pill.active {
+      background: var(--green-dim);
+      border-color: var(--green-brd);
+      color: var(--green);
+    }
+
+    .tags-wrap {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r-card);
+      padding: 10px 12px;
+      display: flex; flex-wrap: wrap; gap: 6px;
+      cursor: text; min-height: 48px; align-items: center;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .tags-wrap:focus-within {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(129,140,248,0.12);
+    }
+    .tag {
+      background: var(--purple-dim);
+      border: 1px solid var(--purple-brd);
+      color: var(--purple);
+      padding: 3px 10px; border-radius: var(--r-pill);
+      font-size: 12px; font-weight: 600;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .tag-remove {
+      cursor: pointer; border: none; background: transparent;
+      color: var(--text2); font-size: 10px; line-height: 1; padding: 0;
+    }
+    .tag-remove:hover { color: var(--text); }
+    .tags-wrap input {
+      background: transparent; border: none; outline: none;
+      font-size: 13px; color: var(--text);
+      font-family: "Inter", sans-serif;
+      padding: 2px 4px; min-width: 140px; flex: 1;
+    }
+    .tags-wrap input::placeholder { color: var(--text2); }
+
+    .hint { font-size: 11px; color: var(--text2); margin-top: -8px; }
+
+    .btn-submit {
+      width: 100%; padding: 14px;
+      border-radius: var(--r-pill);
+      background: var(--green);
+      color: #000; font-size: 15px; font-weight: 700;
+      border: none; cursor: pointer;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn-submit:hover { opacity: 0.9; }
+    .btn-submit:active { transform: scale(0.99); }
+
+    .footer-note { font-size: 13px; color: var(--text2); text-align: center; }
+    .footer-note a { color: var(--green); text-decoration: none; font-weight: 600; }
+    .footer-note a:hover { text-decoration: underline; }
+
+    .error-banner {
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: var(--r-card);
+      padding: 12px 16px;
+      font-size: 13px; color: #f87171;
+      display: none;
+    }
+    .error-banner.visible { display: block; }
+
+    @media (max-width: 600px) {
+      .card { padding: 24px 20px; }
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/landing.html" class="logo">
+    <div class="logo-icon">◈</div>
+    <div class="logo-text">TrendLens</div>
+  </a>
+</header>
+
+<div class="page">
+  <div class="card">
+
+    <div class="card-header">
+      <h1>Create your account</h1>
+      <p>Tell us about your product so TrendLens can personalise your trend signals from day one.</p>
+    </div>
+
+    <form method="POST" action="/signup" id="signup-form">
+
+      <div class="section">
+        <div class="section-label">Account</div>
+        <div class="row">
+          <div class="field">
+            <label for="first_name">First name</label>
+            <input type="text" id="first_name" name="first_name" placeholder="Yeganeh" required/>
+          </div>
+          <div class="field">
+            <label for="last_name">Last name</label>
+            <input type="text" id="last_name" name="last_name" placeholder="K." required/>
+          </div>
+        </div>
+        <div class="field">
+          <label for="email">Work email</label>
+          <input type="email" id="email" name="email" placeholder="you@company.com" required/>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="••••••••" required minlength="8"/>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Your Product</div>
+
+        <div class="field">
+          <label for="product_type">Type of product</label>
+          <select id="product_type" name="product_type">
+            <option value="" disabled selected>Select a category…</option>
+            <option value="SaaS / Software">SaaS / Software</option>
+            <option value="Marketplace">Marketplace</option>
+            <option value="Developer Tool">Developer Tool</option>
+            <option value="Fintech">Fintech</option>
+            <option value="Healthcare">Healthcare</option>
+            <option value="E-commerce">E-commerce</option>
+            <option value="EdTech">EdTech</option>
+            <option value="Hardware">Hardware</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="target_users">Who are your users?</label>
+          <input type="text" id="target_users" name="target_users"
+            placeholder="e.g. enterprise engineers, small business owners"/>
+        </div>
+
+        <div class="field">
+          <label>Business model</label>
+          <div class="pill-group" id="biz-model-group">
+            <button type="button" class="pill active" data-value="B2B">B2B</button>
+            <button type="button" class="pill" data-value="B2C">B2C</button>
+            <button type="button" class="pill" data-value="Both">Both</button>
+            <button type="button" class="pill" data-value="B2B2C">B2B2C</button>
+          </div>
+          <input type="hidden" id="business_model" name="business_model" value="B2B"/>
+        </div>
+
+        <div class="field">
+          <label for="product_goal">Goal of your product</label>
+          <textarea id="product_goal" name="product_goal"
+            placeholder="e.g. Help finance teams automate expense reporting and reduce approval time by 50%"></textarea>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Trend Interests</div>
+        <div class="field">
+          <label>Keywords you care about</label>
+          <div class="tags-wrap" id="tags-wrap">
+            <input type="text" id="tag-input" placeholder="Type a keyword and press Enter…"/>
+          </div>
+          <input type="hidden" id="keywords-value" name="keywords"/>
+          <div class="hint">These shape which signals TrendLens surfaces for you.</div>
+        </div>
+      </div>
+
+      <div class="error-banner" id="error-banner"></div>
+
+      <button type="submit" class="btn-submit">Create account &amp; start tracking →</button>
+
+    </form>
+
+    <div class="footer-note">Already have an account? <a href="/">Sign in</a></div>
+
+  </div>
+</div>
+
+<script>
+  // Pill toggle — business model
+  document.getElementById('biz-model-group').addEventListener('click', function(e) {
+    var btn = e.target.closest('.pill');
+    if (!btn) return;
+    document.querySelectorAll('#biz-model-group .pill').forEach(function(p) {
+      p.classList.remove('active');
+    });
+    btn.classList.add('active');
+    document.getElementById('business_model').value = btn.getAttribute('data-value');
+  });
+
+  // Tag input — safe DOM methods, no innerHTML with user data
+  var tagsWrap = document.getElementById('tags-wrap');
+  var tagInput = document.getElementById('tag-input');
+  var keywordsHidden = document.getElementById('keywords-value');
+  var tags = [];
+
+  function buildTagEl(text, index) {
+    var el = document.createElement('div');
+    el.className = 'tag';
+    var label = document.createElement('span');
+    label.textContent = text;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tag-remove';
+    btn.setAttribute('aria-label', 'Remove ' + text);
+    btn.textContent = '✕';
+    btn.setAttribute('data-i', String(index));
+    el.appendChild(label);
+    el.appendChild(btn);
+    return el;
+  }
+
+  function renderTags() {
+    tagsWrap.querySelectorAll('.tag').forEach(function(t) { t.remove(); });
+    tags.forEach(function(tag, i) {
+      tagsWrap.insertBefore(buildTagEl(tag, i), tagInput);
+    });
+    keywordsHidden.value = tags.join(',');
+  }
+
+  tagsWrap.addEventListener('click', function(e) {
+    var removeBtn = e.target.closest('.tag-remove');
+    if (removeBtn) {
+      tags.splice(Number(removeBtn.getAttribute('data-i')), 1);
+      renderTags();
+    } else {
+      tagInput.focus();
+    }
+  });
+
+  tagInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      var val = tagInput.value.trim();
+      if (val && tags.indexOf(val) === -1) { tags.push(val); renderTags(); }
+      tagInput.value = '';
+    }
+    if (e.key === 'Backspace' && !tagInput.value && tags.length) {
+      tags.pop(); renderTags();
+    }
+  });
+
+  // Form submit — require at least one keyword
+  document.getElementById('signup-form').addEventListener('submit', function(e) {
+    var banner = document.getElementById('error-banner');
+    if (tags.length === 0) {
+      e.preventDefault();
+      banner.textContent = 'Please add at least one keyword to track.';
+      banner.classList.add('visible');
+      tagsWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      banner.classList.remove('visible');
+    }
+  });
+</script>
+
+</body>
+</html>
