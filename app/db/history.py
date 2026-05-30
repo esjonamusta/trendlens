@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS feedback (
     domain         TEXT    NOT NULL,
     item_headline  TEXT    NOT NULL,
     feedback_type  TEXT    NOT NULL,
+    user_id        INTEGER,
     created_at     TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_feedback_domain ON feedback(domain);
@@ -78,18 +79,23 @@ def _connect() -> sqlite3.Connection:
 
 def init_db() -> None:
     with _connect() as conn:
+        # Migrate before running schema so indexes on new columns work
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(feedback)")}
+        if cols and "user_id" not in cols:
+            conn.execute("ALTER TABLE feedback ADD COLUMN user_id INTEGER")
         conn.executescript(_SCHEMA)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_user_id ON feedback(user_id)")
     log.info("History DB initialised")
 
 
-def save_feedback(run_id: str, domain: str, item_headline: str, feedback_type: str) -> None:
+def save_feedback(run_id: str, domain: str, item_headline: str, feedback_type: str, user_id: int | None = None) -> None:
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
         conn.execute(
-            "INSERT INTO feedback (run_id, domain, item_headline, feedback_type, created_at) VALUES (?,?,?,?,?)",
-            (run_id, domain.strip().lower(), item_headline, feedback_type, now),
+            "INSERT INTO feedback (run_id, domain, item_headline, feedback_type, user_id, created_at) VALUES (?,?,?,?,?,?)",
+            (run_id, domain.strip().lower(), item_headline, feedback_type, user_id, now),
         )
-    log.info(f"Feedback saved | domain={domain!r} type={feedback_type} headline={item_headline!r}")
+    log.info(f"Feedback saved | domain={domain!r} type={feedback_type} headline={item_headline!r} user_id={user_id}")
 
 
 def get_incorrect_headlines(domain: str) -> list[str]:
@@ -285,7 +291,7 @@ def get_timeline(domain: str, days: int = 30) -> list[dict]:
     return result
 
 
-def save_trend_feedback(domain: str, item_headline: str, feedback_type: str) -> None:
+def save_trend_feedback(domain: str, item_headline: str, feedback_type: str, user_id: int | None = None) -> None:
     """Save relevant/not_relevant feedback for a trend item.
 
     run_id is stored as an empty string because trend feedback is not tied
@@ -294,10 +300,25 @@ def save_trend_feedback(domain: str, item_headline: str, feedback_type: str) -> 
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
         conn.execute(
-            "INSERT INTO feedback (run_id, domain, item_headline, feedback_type, created_at) VALUES (?,?,?,?,?)",
-            ("", domain.strip().lower(), item_headline, feedback_type, now),
+            "INSERT INTO feedback (run_id, domain, item_headline, feedback_type, user_id, created_at) VALUES (?,?,?,?,?,?)",
+            ("", domain.strip().lower(), item_headline, feedback_type, user_id, now),
         )
-    log.info(f"Trend feedback saved | domain={domain!r} type={feedback_type}")
+    log.info(f"Trend feedback saved | domain={domain!r} type={feedback_type} user_id={user_id}")
+
+
+def get_user_feedback(user_id: int) -> list[dict]:
+    """Return all feedback given by a specific user, newest first."""
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT domain, item_headline, feedback_type, created_at
+            FROM feedback
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            """,
+            (user_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def get_liked_headlines(domain: str) -> list[str]:

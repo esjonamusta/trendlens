@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import json
 
-from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Cookie, Form, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
 
 from app.core.logger import get_logger
@@ -57,7 +57,8 @@ async def research_markdown(
 
 
 @router.post("/feedback", status_code=204)
-async def submit_feedback(body: FeedbackRequest) -> None:
+async def submit_feedback(body: FeedbackRequest, tl_user_id: str | None = Cookie(default=None)) -> None:
+    user_id = int(tl_user_id) if tl_user_id and tl_user_id.isdigit() else None
     try:
         await asyncio.to_thread(
             history_db.save_feedback,
@@ -65,6 +66,7 @@ async def submit_feedback(body: FeedbackRequest) -> None:
             body.domain,
             body.item_headline,
             body.feedback_type,
+            user_id,
         )
     except Exception as exc:
         log.error(f"Feedback save failed: {exc}", exc_info=True)
@@ -198,19 +200,37 @@ async def signup(
         except Exception:
             pass  # domain already tracked — fine
 
-    return RedirectResponse("/app", status_code=303)
+    user = await asyncio.to_thread(history_db.get_user_by_email, user_data["email"])
+    response = RedirectResponse("/app", status_code=303)
+    response.set_cookie("tl_user_id", str(user["id"]), max_age=60 * 60 * 24 * 30, httponly=True, samesite="lax")
+    response.set_cookie("tl_user_name", user_data["first_name"], max_age=60 * 60 * 24 * 30, samesite="lax")
+    return response
 
 
 @router.post("/trend-feedback", status_code=204)
-async def submit_trend_feedback(body: TrendFeedbackRequest) -> None:
+async def submit_trend_feedback(body: TrendFeedbackRequest, tl_user_id: str | None = Cookie(default=None)) -> None:
     """Save relevant/not_relevant feedback for a trend to improve personalization."""
+    user_id = int(tl_user_id) if tl_user_id and tl_user_id.isdigit() else None
     try:
         await asyncio.to_thread(
             history_db.save_trend_feedback,
             body.domain,
             body.item_headline,
             body.feedback_type,
+            user_id,
         )
     except Exception as exc:
         log.error(f"Trend feedback failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/me/feedback")
+async def get_my_feedback(tl_user_id: str | None = Cookie(default=None)) -> list[dict]:
+    """Return all thumbs up/down given by the currently logged-in user."""
+    if not tl_user_id or not tl_user_id.isdigit():
+        raise HTTPException(status_code=401, detail="Not logged in.")
+    try:
+        return await asyncio.to_thread(history_db.get_user_feedback, int(tl_user_id))
+    except Exception as exc:
+        log.error(f"User feedback fetch failed: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
