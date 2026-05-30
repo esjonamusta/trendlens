@@ -317,29 +317,29 @@
     .domain-chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .domain-chip { padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s; border: 1px solid; font-family: inherit; background: transparent; }
     .domain-chip.chip-active { background: rgba(124,92,252,0.12); border-color: rgba(124,92,252,0.3); color: #a78bfa; }
-    .domain-chip.chip-inactive { background: #16161f; border-color: rgba(255,255,255,0.08); color: #7878a0; }
+    .domain-chip.chip-inactive { background: var(--srf2); border-color: rgba(255,255,255,0.08); color: #7878a0; }
 
     .explorer-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 
-    .mode-tabs { display: flex; background: #0f0f17; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 4px; gap: 2px; }
+    .mode-tabs { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px; gap: 2px; }
     .mode-tab { padding: 8px 18px; border-radius: 9px; font-size: 13px; font-weight: 600; color: #7878a0; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; border: none; background: transparent; font-family: inherit; }
     .mode-tab.mode-active { background: #16161f; color: #f4f4f8; }
     .mode-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
     .mode-badge.badge-personal { background: rgba(124,92,252,0.2); color: #a78bfa; }
     .mode-badge.badge-general  { background: rgba(255,255,255,0.07); color: #7878a0; }
 
-    .ex-time-tabs { display: flex; gap: 4px; background: #0f0f17; border: 1px solid rgba(255,255,255,0.07); border-radius: 999px; padding: 4px; }
+    .ex-time-tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px; }
     .ex-time-tab { padding: 5px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; color: #7878a0; transition: all 0.15s; border: none; background: transparent; font-family: inherit; }
     .ex-time-tab.time-active { background: #7c5cfc; color: #fff; }
 
     .personal-hint { background: rgba(124,92,252,0.08); border: 1px solid rgba(124,92,252,0.18); border-radius: 10px; padding: 10px 14px; font-size: 12px; color: #a78bfa; display: flex; align-items: center; gap: 8px; }
 
-    .ex-trend-row { background: #0f0f17; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: border-color 0.15s; }
+    .ex-trend-row { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: border-color 0.15s; }
     .ex-trend-row:hover { border-color: rgba(124,92,252,0.3); }
     .ex-rank { font-size: 18px; font-weight: 800; color: rgba(255,255,255,0.12); width: 20px; flex-shrink: 0; }
     .ex-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-    .ex-title { font-size: 14px; font-weight: 600; color: #f4f4f8; line-height: 1.4; }
-    .ex-meta  { font-size: 11px; color: #7878a0; }
+    .ex-title { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.4; }
+    .ex-meta  { font-size: 11px; color: var(--text3); }
     .ex-right { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; }
     .ex-sparkline { flex-shrink: 0; width: 64px; height: 24px; }
 
@@ -354,7 +354,7 @@
     .shine-declining{ --shine:#ef4444; --sbg:#200d0d; --scolor:#ef4444; --speed:2s;   }
 
     /* Feedback pill */
-    .pill-feedback { display: flex; background: #16161f; border-radius: 999px; padding: 3px; gap: 2px; border: 1px solid rgba(255,255,255,0.06); }
+    .pill-feedback { display: flex; background: var(--srf2); border-radius: 999px; padding: 3px; gap: 2px; border: 1px solid var(--border); }
     .pf-btn { padding: 4px 11px; border-radius: 999px; font-size: 11px; font-weight: 700; cursor: pointer; color: #7878a0; transition: all 0.15s; border: none; background: transparent; font-family: inherit; }
     .pf-btn:hover { color: #b8b8cc; }
     .pf-liked    { background: rgba(34,197,94,0.15) !important; color: #22c55e !important; }
@@ -628,9 +628,10 @@
       <button class="ex-time-tab" :class="{ 'time-active': exTime === 'yesterday' }" @click="exTime = 'yesterday'; loadExTrends()">Yesterday</button>
       <button class="ex-time-tab" :class="{ 'time-active': exTime === 'today' }"     @click="exTime = 'today'; loadExTrends()">Today</button>
       <button class="ex-time-tab" :class="{ 'time-active': exTime === 'week' }"      @click="exTime = 'week'; loadExTrends()">This Week</button>
-      <button class="ex-time-tab" :class="{ 'time-active': exTime === 'custom' }"    @click="exTime = 'custom'; loadExTrends()">Custom 📅</button>
+      <button class="ex-time-tab" :class="{ 'time-active': exTime === 'custom' }" @click="exTime = 'custom'; loadExTrends()" title="Custom range coming soon — shows last 30 days">Custom 📅</button>
     </div>
   </div>
+  <div x-show="exTime === 'custom'" style="font-size:11px;color:#7878a0;margin-top:-12px;">Custom date picker coming soon — showing last 30 days</div>
 
   <!-- Personalized hint -->
   <div class="personal-hint" x-show="exMode === 'personalized'">
@@ -641,7 +642,7 @@
   <div class="ex-empty" x-show="exLoading">Loading trends…</div>
 
   <!-- Empty state -->
-  <div class="ex-empty" x-show="!exLoading && filteredExTrends().length === 0 && !exLoading">
+  <div class="ex-empty" x-show="!exLoading && filteredExTrends().length === 0">
     No trends found. Try running a research report first, or add a domain.
   </div>
 
@@ -783,15 +784,20 @@
 
       async initExplorer() {
         if (this.exDomains.length === 0) {
-          try {
-            const r = await fetch('/domains');
-            const data = await r.json();
-            this.exDomains = data.map(d => d.domain);
-            if (this.exDomains.length > 0 && !this.exDomain) {
-              this.exDomain = this.exDomains[0];
-              await this.loadExTrends();
-            }
-          } catch(e) { console.error('Explorer domains failed', e); }
+          // Reuse domains already loaded by init() — avoid a second network request
+          this.exDomains = this.domains.map(d => d.domain);
+          if (this.exDomains.length === 0) {
+            // Domains not yet loaded — fetch them
+            try {
+              const r = await fetch('/domains');
+              const data = await r.json();
+              this.exDomains = data.map(d => d.domain);
+            } catch(e) { console.error('Explorer domains failed', e); }
+          }
+          if (this.exDomains.length > 0 && !this.exDomain) {
+            this.exDomain = this.exDomains[0];
+            await this.loadExTrends();
+          }
         }
       },
 
