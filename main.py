@@ -17,6 +17,8 @@ from app.api.routes import router
 from app.core.config import settings
 from app.core.logger import get_logger
 from app.db import history as history_db
+from app.db import tracked_domains as td_db
+from app import scheduler as sched
 
 log = get_logger(__name__)
 
@@ -55,10 +57,16 @@ def create_app() -> FastAPI:
     async def _startup() -> None:
         history_db.init_db()
         history_db.purge_old_snapshots(settings.history_retention_days)
+        td_db.init_db()
+        sched.start()
         log.info(
             f"[{settings.app_name}] v{settings.app_version} starting | "
             f"provider={settings.llm_provider} model={settings.active_model}"
         )
+
+    @app.on_event("shutdown")
+    async def _shutdown() -> None:
+        sched.stop()
 
     return app
 

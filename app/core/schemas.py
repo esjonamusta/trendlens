@@ -165,6 +165,18 @@ class FeedbackRequest(BaseModel):
     feedback_type: Literal["incorrect", "helpful"]
 
 
+class AddDomainRequest(BaseModel):
+    domain: Annotated[str, Field(min_length=2, max_length=200)]
+
+
+class TrackedDomain(BaseModel):
+    id: int
+    domain: str
+    added_at: str
+    last_run_at: str | None = None
+    status: str  # "pending" | "running" | "done" | "error"
+
+
 class ProductProfile(BaseModel):
     """Persistent PM + product context stored per domain.
 
