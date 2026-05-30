@@ -30,6 +30,8 @@ from app.services.trend_engine import (
     rank_clusters,
 )
 from app.services.web_search import QueryResults
+from app.sources.github import fetch_github_signals
+from app.sources.hn import fetch_hn_signals
 from app.sources.podcasts import fetch_podcast_signals
 from app.sources.reddit import fetch_reddit_signals
 from app.sources.web import fetch_web_signals
@@ -94,10 +96,18 @@ class ResearchAgent:
         )
 
         # ── 2. Parallel fetch from all source types ───────────────────────────
-        podcast_results, reddit_results, web_results = await asyncio.gather(
+        (
+            podcast_results,
+            reddit_results,
+            web_results,
+            hn_results,
+            github_results,
+        ) = await asyncio.gather(
             fetch_podcast_signals(config, discovery.podcasts),
             fetch_reddit_signals(config, discovery.subreddits),
             fetch_web_signals(config),
+            fetch_hn_signals(config),
+            fetch_github_signals(config),
         )
 
         # ── 3. Deduplicate and collect typed SearchSource objects ─────────────
@@ -113,6 +123,7 @@ class ResearchAgent:
                             title=r.title or r.url,
                             type=kind,
                             snippet=r.snippet or "",
+                            engagement_score=getattr(r, "engagement_score", None),
                         ))
             return out
 
@@ -120,6 +131,8 @@ class ResearchAgent:
             _collect(podcast_results, "podcast")
             + _collect(reddit_results, "reddit")
             + _collect(web_results, "web")
+            + _collect(hn_results, "web")      # HN stories treated as web sources
+            + _collect(github_results, "web")  # GitHub repos/issues treated as web sources
         )
 
         if not search_sources:

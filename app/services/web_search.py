@@ -30,6 +30,7 @@ class SearchResult:
     title: str
     url: str
     snippet: str
+    engagement_score: float | None = None  # 0.0–1.0 when set from real engagement data
 
 
 @dataclass

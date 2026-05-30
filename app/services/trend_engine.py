@@ -152,6 +152,10 @@ def source_quality_weight(source: SearchSource) -> float:
       SEO listicle (URL pattern)     0.2
 
     Stale sources (all year refs ≤ _STALE_CUTOFF) are multiplied by 0.5.
+
+    When engagement_score is set (from a real API like HN Algolia, GitHub, or Reddit
+    OAuth), an additional 1.0–1.5× multiplier is applied so highly-upvoted or
+    heavily-starred content ranks above low-engagement content from the same domain.
     """
     domain = _url_domain(source.url)
 
@@ -168,7 +172,13 @@ def source_quality_weight(source: SearchSource) -> float:
     else:
         base = 0.6
 
-    return base * (0.5 if _is_stale(source) else 1.0)
+    weight = base * (0.5 if _is_stale(source) else 1.0)
+
+    if source.engagement_score is not None:
+        engagement_multiplier = 1.0 + 0.5 * source.engagement_score  # 1.0–1.5×
+        weight *= engagement_multiplier
+
+    return weight
 
 
 def freshness_score(source: SearchSource) -> float:

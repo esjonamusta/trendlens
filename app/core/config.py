@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     tavily_api_key: str = ""
     brave_api_key: str = ""
 
+    # ── Real engagement APIs (all optional — fall back gracefully when absent) ───
+    # GitHub: raises rate limit from 60 to 5 000 req/hr
+    github_token: str = ""
+    # Reddit OAuth: enables direct subreddit search with upvote/comment counts
+    reddit_client_id: str = ""
+    reddit_client_secret: str = ""
+
     # ── In-memory cache ─────────────────────────────────────────────────────────
     enable_cache: bool = True
     cache_ttl_seconds: int = 3600  # 1 hour

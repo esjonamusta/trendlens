@@ -52,6 +52,7 @@ class SearchSource(BaseModel):
     title: str
     type: str  # "reddit" | "podcast" | "web"
     snippet: str = ""
+    engagement_score: float | None = None  # 0.0–1.0 when sourced from a real engagement API
 
 
 class ResearchReport(BaseModel):
