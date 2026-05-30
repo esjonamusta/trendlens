@@ -162,3 +162,26 @@ class FeedbackRequest(BaseModel):
     domain: str
     item_headline: str
     feedback_type: Literal["incorrect", "helpful"]
+
+
+class ProductProfile(BaseModel):
+    """Persistent PM + product context stored per domain.
+
+    Loaded automatically by the pipeline on every research run so the LLM can
+    frame 'why it matters' and 'pm_action' against the actual product reality
+    rather than a generic PM in this space.
+    """
+    domain: str
+    product_description: str = ""       # What the product does (1-2 sentences)
+    product_stage: str = ""             # "early-stage" | "growth" | "mature" | "enterprise"
+    tech_stack: list[str] = []          # ["Python", "React", "AWS"]
+    customer_segment: str = ""          # Who buys it, e.g. "enterprise engineering teams"
+    user_pain_points: list[str] = []    # Top user complaints, drives pm_action specificity
+    pm_role: str = ""                   # e.g. "Platform PM", "Growth PM"
+    pm_focus: str = ""                  # Current OKR or strategic theme this quarter
+    # These pre-fill ResearchConfig fields when not set in the request
+    competitors: list[str] = []
+    target_users: str = ""
+    geographic_market: str = ""
+    created_at: str = ""
+    updated_at: str = ""

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from app.agents.research_agent import research_agent
 from app.core.config import settings
 from app.core.logger import get_logger
+from app.core.prompts import format_product_context
 from app.core.schemas import ResearchConfig, ResearchReportWithDelta, TopicSnapshot
 from app.db import history as history_db
 from app.services.delta import compute_delta
@@ -67,16 +68,33 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
 
     log.info(f"Pipeline starting | domain='{config.domain}'")
     t_start = time.perf_counter()
+    domain_key = config.domain.strip().lower()
 
     excluded = await asyncio.to_thread(history_db.get_incorrect_headlines, config.domain)
     if excluded:
         log.info(f"Excluding {len(excluded)} previously marked-incorrect item(s) | domain='{config.domain}'")
 
-    report = await research_agent.run(config, excluded_headlines=excluded or None)
+    # Load product profile and merge fields into config (profile fills gaps; request takes precedence)
+    profile = await asyncio.to_thread(history_db.get_profile, domain_key)
+    if profile:
+        if not config.competitors and profile.get("competitors"):
+            config = config.model_copy(update={"competitors": profile["competitors"]})
+        if not config.target_users and profile.get("target_users"):
+            config = config.model_copy(update={"target_users": profile["target_users"]})
+        if not config.geographic_market and profile.get("geographic_market"):
+            config = config.model_copy(update={"geographic_market": profile["geographic_market"]})
+        log.info(f"Product profile loaded | domain='{domain_key}'")
+
+    product_context = format_product_context(profile) if profile else ""
+
+    report = await research_agent.run(
+        config,
+        excluded_headlines=excluded or None,
+        product_context=product_context,
+    )
     report.generated_at = datetime.now(timezone.utc).isoformat()
 
     run_id = str(uuid.uuid4())
-    domain_key = config.domain.strip().lower()
 
     # Save ALL fetched items (including delta buffer) so the matching pool is wider
     # and topics that drop a rank or two don't show as DISAPPEARED next run.

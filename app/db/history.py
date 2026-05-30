@@ -35,6 +35,13 @@ CREATE TABLE IF NOT EXISTS feedback (
     created_at     TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_feedback_domain ON feedback(domain);
+
+CREATE TABLE IF NOT EXISTS product_profiles (
+    domain       TEXT    PRIMARY KEY,
+    profile_json TEXT    NOT NULL,
+    created_at   TEXT    NOT NULL,
+    updated_at   TEXT    NOT NULL
+);
 """
 
 
@@ -173,6 +180,35 @@ def find_previous_snapshot(
         topics=json.loads(best_row["topics_json"]),
         created_at=best_row["created_at"],
     )
+
+
+def upsert_profile(domain: str, profile: dict) -> None:
+    """Insert or replace a product profile for the given domain."""
+    now = datetime.now(timezone.utc).isoformat()
+    domain_key = domain.strip().lower()
+    with _connect() as conn:
+        existing = conn.execute(
+            "SELECT created_at FROM product_profiles WHERE domain = ?", (domain_key,)
+        ).fetchone()
+        created_at = existing["created_at"] if existing else now
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO product_profiles (domain, profile_json, created_at, updated_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (domain_key, json.dumps(profile), created_at, now),
+        )
+    log.info(f"Profile saved | domain={domain_key!r}")
+
+
+def get_profile(domain: str) -> dict | None:
+    """Return the stored product profile for a domain, or None if not set."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT profile_json FROM product_profiles WHERE domain = ?",
+            (domain.strip().lower(),),
+        ).fetchone()
+    return json.loads(row["profile_json"]) if row else None
 
 
 def list_snapshots(domain: str, limit: int = 20) -> list[StoredSnapshot]:

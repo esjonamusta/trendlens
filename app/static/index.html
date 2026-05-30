@@ -61,6 +61,35 @@
     .optional-fields { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 10px; }
     .optional-fields.open { display: block; }
 
+    /* Profile panel */
+    .profile-toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .profile-toggle { font-size: 12px; color: var(--text3); background: none; border: none; font-family: inherit; cursor: pointer; padding: 0; }
+    .profile-toggle:hover { color: var(--text2); }
+    .profile-loaded-pill { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 99px; background: rgba(124,92,252,0.12); color: #a78bfa; border: 1px solid rgba(124,92,252,0.25); display: none; }
+    .profile-loaded-pill.visible { display: inline-block; }
+
+    .profile-panel { display: none; background: var(--surface); border: 1px solid rgba(124,92,252,0.2); border-radius: var(--r); padding: 16px; margin-bottom: 10px; }
+    .profile-panel.open { display: block; }
+    .profile-panel-header { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 12px; }
+    .profile-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+    .profile-row.single { grid-template-columns: 1fr; }
+    .profile-row:last-of-type { margin-bottom: 12px; }
+    .profile-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+    .profile-field input, .profile-field textarea, .profile-field select {
+      width: 100%; background: var(--srf2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 9px 12px; font-size: 13px; font-family: inherit; color: var(--text); outline: none; transition: border-color 0.2s;
+    }
+    .profile-field textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
+    .profile-field input::placeholder, .profile-field textarea::placeholder { color: var(--text3); }
+    .profile-field input:focus, .profile-field textarea:focus, .profile-field select:focus { border-color: var(--accent); }
+    .profile-field select option { background: var(--srf2); }
+    .profile-save-row { display: flex; align-items: center; gap: 10px; }
+    .profile-save-btn { font-size: 13px; font-weight: 600; font-family: inherit; background: rgba(124,92,252,0.15); color: #a78bfa; border: 1px solid rgba(124,92,252,0.3); border-radius: 8px; padding: 8px 16px; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+    .profile-save-btn:hover { background: rgba(124,92,252,0.25); border-color: rgba(124,92,252,0.5); }
+    .profile-save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .profile-save-msg { font-size: 12px; color: var(--green); display: none; }
+    .profile-save-msg.visible { display: inline; }
+
     .opt-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
     .opt-row:last-child { margin-bottom: 0; }
     .opt-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
@@ -269,6 +298,62 @@
       </div>
     </div>
 
+    <div class="profile-toggle-row">
+      <button class="profile-toggle" id="profileToggleBtn" onclick="toggleProfile()">◈ My product profile</button>
+      <span class="profile-loaded-pill" id="profilePill">Profile active</span>
+    </div>
+
+    <div class="profile-panel" id="profilePanel">
+      <div class="profile-panel-header">Tell TrendLens about your product — results will be framed specifically for you</div>
+
+      <div class="profile-row single">
+        <div class="profile-field">
+          <label>What your product does</label>
+          <textarea id="pp_description" placeholder="e.g. We help engineering teams measure and improve developer productivity via DORA metrics and CI/CD analytics."></textarea>
+        </div>
+      </div>
+
+      <div class="profile-row">
+        <div class="profile-field">
+          <label>Product stage</label>
+          <select id="pp_stage">
+            <option value="">— select —</option>
+            <option value="early-stage">Early-stage / pre-PMF</option>
+            <option value="growth">Growth / scaling</option>
+            <option value="mature">Mature / optimising</option>
+            <option value="enterprise">Enterprise / large org</option>
+          </select>
+        </div>
+        <div class="profile-field">
+          <label>Selling to (customer segment)</label>
+          <input id="pp_segment" type="text" placeholder="e.g. enterprise engineering teams" />
+        </div>
+      </div>
+
+      <div class="profile-row">
+        <div class="profile-field">
+          <label>Tech stack (comma-separated)</label>
+          <input id="pp_stack" type="text" placeholder="e.g. Python, React, AWS, Postgres" />
+        </div>
+        <div class="profile-field">
+          <label>Your PM role &amp; focus</label>
+          <input id="pp_pm" type="text" placeholder="e.g. Platform PM — reducing MTTR this quarter" />
+        </div>
+      </div>
+
+      <div class="profile-row single">
+        <div class="profile-field">
+          <label>Top user pain points (comma-separated)</label>
+          <input id="pp_pains" type="text" placeholder="e.g. slow CI, flaky tests, unclear ownership" />
+        </div>
+      </div>
+
+      <div class="profile-save-row">
+        <button class="profile-save-btn" id="profileSaveBtn" onclick="saveProfile()">Save profile</button>
+        <span class="profile-save-msg" id="profileSaveMsg">✓ Saved — will apply on next research run</span>
+      </div>
+    </div>
+
     <div class="chips">
       <button class="chip" onclick="fill('developer experience')">developer experience</button>
       <button class="chip" onclick="fill('AI coding tools')">AI coding tools</button>
@@ -315,10 +400,86 @@
 
 <script>
   document.getElementById("domain").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
+  document.getElementById("domain").addEventListener("blur", () => {
+    const d = document.getElementById("domain").value.trim();
+    if (d) loadProfile(d);
+  });
 
   function fill(text) {
     document.getElementById("domain").value = text;
     document.getElementById("domain").focus();
+  }
+
+  // ── Product profile ──────────────────────────────────────────────────────────
+
+  function toggleProfile() {
+    const panel = document.getElementById("profilePanel");
+    const open = panel.classList.toggle("open");
+    document.getElementById("profileToggleBtn").textContent = open ? "◈ My product profile ▲" : "◈ My product profile";
+  }
+
+  function _setProfileFields(p) {
+    document.getElementById("pp_description").value = p.product_description || "";
+    document.getElementById("pp_stage").value       = p.product_stage || "";
+    document.getElementById("pp_segment").value     = p.customer_segment || "";
+    document.getElementById("pp_stack").value       = (p.tech_stack || []).join(", ");
+    const pmStr = [p.pm_role, p.pm_focus].filter(Boolean).join(" — ");
+    document.getElementById("pp_pm").value          = pmStr;
+    document.getElementById("pp_pains").value       = (p.user_pain_points || []).join(", ");
+  }
+
+  function _showProfilePill(visible) {
+    document.getElementById("profilePill").classList.toggle("visible", visible);
+  }
+
+  async function loadProfile(domain) {
+    try {
+      const res = await fetch(`/profile/${encodeURIComponent(domain.trim().toLowerCase())}`);
+      if (res.status === 404) { _showProfilePill(false); return; }
+      if (!res.ok) return;
+      const p = await res.json();
+      _setProfileFields(p);
+      _showProfilePill(true);
+    } catch { /* silent — profile is optional */ }
+  }
+
+  function _buildProfilePayload(domain) {
+    const pmRaw = document.getElementById("pp_pm").value.trim();
+    const pmParts = pmRaw.split("—").map(s => s.trim()).filter(Boolean);
+    return {
+      domain: domain.trim().toLowerCase(),
+      product_description: document.getElementById("pp_description").value.trim(),
+      product_stage:       document.getElementById("pp_stage").value,
+      customer_segment:    document.getElementById("pp_segment").value.trim(),
+      tech_stack:          document.getElementById("pp_stack").value.split(",").map(s => s.trim()).filter(Boolean),
+      pm_role:             pmParts[0] || "",
+      pm_focus:            pmParts[1] || "",
+      user_pain_points:    document.getElementById("pp_pains").value.split(",").map(s => s.trim()).filter(Boolean),
+      competitors:         [],
+      target_users:        "",
+      geographic_market:   "",
+    };
+  }
+
+  async function saveProfile() {
+    const domain = document.getElementById("domain").value.trim();
+    if (!domain) { alert("Enter a domain first."); return; }
+    const btn = document.getElementById("profileSaveBtn");
+    const msg = document.getElementById("profileSaveMsg");
+    btn.disabled = true;
+    msg.classList.remove("visible");
+    try {
+      const res = await fetch(`/profile/${encodeURIComponent(domain.trim().toLowerCase())}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(_buildProfilePayload(domain)),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      _showProfilePill(true);
+      msg.classList.add("visible");
+      setTimeout(() => msg.classList.remove("visible"), 3000);
+    } catch (err) { alert("Save failed: " + err.message); }
+    finally { btn.disabled = false; }
   }
 
   function toggleOptional() {

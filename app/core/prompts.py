@@ -14,7 +14,7 @@ DISCOVERY_USER = """\
 Domain: {domain}
 Competitors: {competitors}
 Target users: {target_users}
-
+{product_context}
 Identify:
 - podcasts: 3-5 podcast show names that practitioners in this domain actually listen to.
   Name real shows. Focus on product, industry, and practitioner podcasts — not generic tech news.
@@ -42,6 +42,8 @@ RULES:
 - Plain English. No jargon. No hedging.
 - pm_action must start with a verb and be something a PM can do this week.
 - Every item must relate to roadmap decisions, user behaviour, competitive moves, or GTM.
+- When product context is provided, frame why_it_matters and pm_action specifically \
+  for that product and PM — not generically "a PM in this space".
 
 GOOD pm_action: "Talk to 5 users who switched to [competitor] and ask what tipped them."
 BAD pm_action: "Consider monitoring competitive developments in this space."
@@ -52,7 +54,7 @@ Domain: {domain}
 Competitors: {competitors}
 Target users: {target_users}
 Geographic market: {geographic_market}
-{excluded_section}
+{product_context}{excluded_section}\
 Write exactly {count} summaries — one per cluster, in the order given. \
 Clusters are pre-ranked by evidence strength (most evidence first).
 
@@ -64,3 +66,32 @@ PREVIOUSLY MARKED AS INCORRECT — do not include these topics:
 {headlines}
 
 """
+
+
+def format_product_context(profile: dict) -> str:
+    """Build a product context block for prompt injection from a stored profile.
+
+    Only non-empty fields are included. Returns an empty string when the profile
+    has no useful content, so prompts degrade gracefully without a profile.
+    """
+    lines: list[str] = []
+
+    if profile.get("product_description"):
+        lines.append(f"What it does: {profile['product_description']}")
+    if profile.get("product_stage"):
+        lines.append(f"Stage: {profile['product_stage']}")
+    if profile.get("tech_stack"):
+        lines.append(f"Tech stack: {', '.join(profile['tech_stack'])}")
+    if profile.get("customer_segment"):
+        lines.append(f"Selling to: {profile['customer_segment']}")
+    if profile.get("user_pain_points"):
+        lines.append(f"User pain points: {'; '.join(profile['user_pain_points'])}")
+    pm_parts = [profile.get("pm_role", ""), profile.get("pm_focus", "")]
+    pm_str = " — ".join(p for p in pm_parts if p)
+    if pm_str:
+        lines.append(f"PM context: {pm_str}")
+
+    if not lines:
+        return ""
+
+    return "Product context:\n" + "\n".join(f"- {l}" for l in lines) + "\n\n"

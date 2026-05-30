@@ -82,11 +82,12 @@ class ResearchAgent:
         self,
         config: ResearchConfig,
         excluded_headlines: list[str] | None = None,
+        product_context: str = "",
     ) -> ResearchReport:
         log.info(f"ResearchAgent starting | domain='{config.domain}'")
 
         # ── 1. Source discovery (Haiku — fast/cheap) ──────────────────────────
-        discovery = await self._discover_sources(config)
+        discovery = await self._discover_sources(config, product_context)
         log.info(
             f"Sources discovered | podcasts={discovery.podcasts} "
             f"subreddits={discovery.subreddits}"
@@ -156,7 +157,7 @@ class ResearchAgent:
             )
 
         # ── 5. LLM writes text only — URLs and confidence already set ─────────
-        summaries = await self._summarize_trends(config, top, excluded_headlines)
+        summaries = await self._summarize_trends(config, top, excluded_headlines, product_context)
         if len(summaries) < len(top):
             log.warning(
                 f"LLM returned {len(summaries)} summaries for {len(top)} clusters — "
@@ -200,11 +201,14 @@ class ResearchAgent:
             raw_cluster_canonical_ids=all_cluster_ids,
         )
 
-    async def _discover_sources(self, config: ResearchConfig) -> SourceDiscovery:
+    async def _discover_sources(
+        self, config: ResearchConfig, product_context: str = ""
+    ) -> SourceDiscovery:
         user_prompt = DISCOVERY_USER.format(
             domain=config.domain,
             competitors=", ".join(config.competitors) if config.competitors else "none specified",
             target_users=config.target_users or "not specified",
+            product_context=product_context,
         )
         return await llm_client.complete(
             system_prompt=DISCOVERY_SYSTEM,
@@ -220,6 +224,7 @@ class ResearchAgent:
         config: ResearchConfig,
         clusters: list[TrendCluster],
         excluded_headlines: list[str] | None = None,
+        product_context: str = "",
     ) -> list[TrendSummaryText]:
         cluster_text = _format_clusters_for_llm(clusters)
         excluded_section = ""
@@ -232,6 +237,7 @@ class ResearchAgent:
             competitors=", ".join(config.competitors) if config.competitors else "none",
             target_users=config.target_users or "not specified",
             geographic_market=config.geographic_market or "global",
+            product_context=product_context,
             count=len(clusters),
             excluded_section=excluded_section,
             cluster_text=cluster_text,
