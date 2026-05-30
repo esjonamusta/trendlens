@@ -254,9 +254,11 @@
 
     /* ── Tab navigation ── */
     .tab-nav { display: flex; border-bottom: 1px solid var(--border); padding: 0 32px; background: var(--bg); position: sticky; top: 61px; z-index: 9; }
-    .tab-btn { font-size: 13px; font-weight: 600; font-family: inherit; color: var(--text3); background: none; border: none; border-bottom: 2px solid transparent; padding: 12px 18px; cursor: pointer; transition: color 0.15s, border-color 0.15s; margin-bottom: -1px; }
+    .tab-btn { font-size: 13px; font-weight: 600; font-family: inherit; color: var(--text3); background: none; border: none; border-bottom: 2px solid transparent; padding: 10px 18px; cursor: pointer; transition: color 0.15s, border-color 0.15s; margin-bottom: -1px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
     .tab-btn:hover { color: var(--text2); }
     .tab-btn.active-tab { color: var(--text); border-bottom-color: var(--accent); }
+    .tab-sub { font-size: 10px; font-weight: 400; color: var(--text3); letter-spacing: 0.03em; }
+    .tab-btn.active-tab .tab-sub { color: var(--text3); }
 
     /* ── Dashboard layout ── */
     .dashboard { display: flex; height: calc(100vh - 112px); max-width: 1100px; margin: 0 auto; }
@@ -320,8 +322,8 @@
 
 <!-- ── Tab navigation ── -->
 <nav class="tab-nav">
-  <button class="tab-btn" :class="{'active-tab': tab==='dashboard'}" @click="tab='dashboard'">Dashboard</button>
-  <button class="tab-btn" :class="{'active-tab': tab==='research'}"  @click="tab='research'">Research</button>
+  <button class="tab-btn" :class="{'active-tab': tab==='dashboard'}" @click="tab='dashboard'">Dashboard <span class="tab-sub">saved · auto-updated</span></button>
+  <button class="tab-btn" :class="{'active-tab': tab==='research'}"  @click="tab='research'">Run Research <span class="tab-sub">on-demand · any domain</span></button>
 </nav>
 
 <!-- ── Dashboard tab ── -->
@@ -391,7 +393,7 @@
             </template>
           </div>
 
-          <button class="run-research-btn" @click="tab='research'; fill(selected.domain)">Research this domain →</button>
+          <button class="run-research-btn" @click="tab='research'; fill(selected.domain)">Run fresh analysis →</button>
         </div>
       </template>
     </main>
