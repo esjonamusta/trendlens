@@ -16,6 +16,7 @@ from app.core.schemas import (
     ResearchConfig,
     ResearchReportWithDelta,
     TrackedDomain,
+    TrendFeedbackRequest,
 )
 from app.db import history as history_db
 from app.db import tracked_domains as td_db
@@ -142,4 +143,33 @@ async def get_history(
         ]
     except Exception as exc:
         log.error(f"History lookup failed for domain='{domain}': {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/history/{domain}/timeline")
+async def get_timeline(
+    domain: str,
+    days: int = Query(default=30, ge=1, le=90),
+) -> dict:
+    """Return per-topic scores over time for the trend explorer chart."""
+    try:
+        snapshots = await asyncio.to_thread(history_db.get_timeline, domain, days)
+        return {"domain": domain, "snapshots": snapshots}
+    except Exception as exc:
+        log.error(f"Timeline lookup failed for domain='{domain}': {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/trend-feedback", status_code=204)
+async def submit_trend_feedback(body: TrendFeedbackRequest) -> None:
+    """Save relevant/not_relevant feedback for a trend to improve personalization."""
+    try:
+        await asyncio.to_thread(
+            history_db.save_trend_feedback,
+            body.domain,
+            body.item_headline,
+            body.feedback_type,
+        )
+    except Exception as exc:
+        log.error(f"Trend feedback failed: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
