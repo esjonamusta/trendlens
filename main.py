@@ -49,6 +49,13 @@ def create_app() -> FastAPI:
     @app.get("/", include_in_schema=False)
     async def index() -> FileResponse:
         return FileResponse(
+            "app/static/landing.html",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
+
+    @app.get("/app", include_in_schema=False)
+    async def explorer() -> FileResponse:
+        return FileResponse(
             "app/static/index.html",
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
         )

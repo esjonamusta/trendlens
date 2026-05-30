@@ -198,7 +198,7 @@ async def signup(
         except Exception:
             pass  # domain already tracked — fine
 
-    return RedirectResponse("/", status_code=303)
+    return RedirectResponse("/app", status_code=303)
 
 
 @router.post("/trend-feedback", status_code=204)
