@@ -42,6 +42,20 @@ CREATE TABLE IF NOT EXISTS product_profiles (
     created_at   TEXT    NOT NULL,
     updated_at   TEXT    NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS users (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name     TEXT NOT NULL,
+    last_name      TEXT NOT NULL,
+    email          TEXT NOT NULL UNIQUE,
+    password_hash  TEXT NOT NULL,
+    product_type   TEXT DEFAULT '',
+    target_users   TEXT DEFAULT '',
+    business_model TEXT DEFAULT '',
+    product_goal   TEXT DEFAULT '',
+    keywords       TEXT DEFAULT '',
+    created_at     TEXT NOT NULL
+);
 """
 
 
@@ -294,6 +308,46 @@ def get_liked_headlines(domain: str) -> list[str]:
             (domain.strip().lower(),),
         ).fetchall()
     return [r["item_headline"] for r in rows]
+
+
+def create_user(data: dict) -> None:
+    """Insert a new user. Raises ValueError if email already exists."""
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        with _connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO users
+                    (first_name, last_name, email, password_hash,
+                     product_type, target_users, business_model,
+                     product_goal, keywords, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    data["first_name"],
+                    data["last_name"],
+                    data["email"],
+                    data["password_hash"],
+                    data.get("product_type", ""),
+                    data.get("target_users", ""),
+                    data.get("business_model", ""),
+                    data.get("product_goal", ""),
+                    data.get("keywords", ""),
+                    now,
+                ),
+            )
+    except sqlite3.IntegrityError as exc:
+        raise ValueError(f"Email already registered: {data['email']}") from exc
+    log.info(f"User created | email={data['email']!r}")
+
+
+def get_user_by_email(email: str) -> dict | None:
+    """Return user row as dict or None if not found."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM users WHERE email = ?", (email.strip().lower(),)
+        ).fetchone()
+    return dict(row) if row else None
 
 
 def list_snapshots(domain: str, limit: int = 20) -> list[StoredSnapshot]:
