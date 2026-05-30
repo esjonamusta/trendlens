@@ -84,6 +84,7 @@ class ResearchAgent:
         self,
         config: ResearchConfig,
         excluded_headlines: list[str] | None = None,
+        liked_headlines: list[str] | None = None,
         product_context: str = "",
     ) -> ResearchReport:
         log.info(f"ResearchAgent starting | domain='{config.domain}'")
@@ -170,7 +171,7 @@ class ResearchAgent:
             )
 
         # ── 5. LLM writes text only — URLs and confidence already set ─────────
-        summaries = await self._summarize_trends(config, top, excluded_headlines, product_context)
+        summaries = await self._summarize_trends(config, top, excluded_headlines, product_context, liked_headlines)
         if len(summaries) < len(top):
             log.warning(
                 f"LLM returned {len(summaries)} summaries for {len(top)} clusters — "
@@ -238,12 +239,19 @@ class ResearchAgent:
         clusters: list[TrendCluster],
         excluded_headlines: list[str] | None = None,
         product_context: str = "",
+        liked_headlines: list[str] | None = None,
     ) -> list[TrendSummaryText]:
         cluster_text = _format_clusters_for_llm(clusters)
         excluded_section = ""
         if excluded_headlines:
             formatted = "\n".join(f"- {h}" for h in excluded_headlines)
             excluded_section = _EXCLUDED_SECTION_TEMPLATE.format(headlines=formatted)
+        if liked_headlines:
+            liked_formatted = "\n".join(f"- {h}" for h in liked_headlines)
+            excluded_section += (
+                f"\n\nThe user previously found these trends valuable — prioritise similar topics "
+                f"and frame insights accordingly:\n{liked_formatted}"
+            )
 
         user_prompt = SUMMARIZE_USER.format(
             domain=config.domain,

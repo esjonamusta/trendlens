@@ -460,6 +460,14 @@
 </head>
 <body x-data="dashApp()" x-init="init()">
 
+<!-- Toast notification -->
+<div x-show="toastVisible" x-transition
+     style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:999;
+            background:#1C1C1F;border:1px solid #2D2D30;border-radius:999px;
+            padding:10px 20px;font-size:13px;font-weight:600;color:#e5e2e3;
+            box-shadow:0 4px 24px rgba(0,0,0,0.4);white-space:nowrap;"
+     x-text="toastMsg"></div>
+
 <header>
   <div class="logo-icon">◈</div>
   <span class="logo-text">TrendLens</span>
@@ -537,7 +545,7 @@
   <div x-show="!exLoading && filteredExTrends().length > 0" style="display:flex;flex-direction:column;gap:10px;">
     <template x-for="(trend, idx) in filteredExTrends()" :key="trend.headline">
       <div class="ex-trend-row" :style="exExpanded[trend.headline] ? 'align-items:flex-start;flex-direction:column;' : ''"
-           @click="exExpanded[trend.headline] = !exExpanded[trend.headline]">
+           @click="exExpanded = {...exExpanded, [trend.headline]: !exExpanded[trend.headline]}">
 
         <!-- Main row (always visible) -->
         <div style="display:flex;align-items:center;gap:16px;width:100%;">
@@ -630,6 +638,24 @@
             No sources available for this trend yet. Run a fresh research report to populate sources.
           </div>
 
+          <!-- Share via email -->
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2D2D30;display:flex;align-items:center;gap:10px;">
+            <span style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;font-family:'JetBrains Mono',monospace;">Share with</span>
+            <input
+              type="email"
+              placeholder="colleague@company.com"
+              style="flex:1;background:#131314;border:1px solid #2D2D30;border-radius:8px;padding:7px 12px;font-size:13px;color:#e5e2e3;font-family:inherit;outline:none;"
+              :id="'share-input-' + trend.headline.replace(/\s+/g, '-')"
+              @click.stop
+            />
+            <button
+              style="padding:7px 14px;border-radius:999px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#22C55E;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;"
+              @click.stop="shareTrend(trend, $el.previousElementSibling.value)"
+              type="button">
+              ✉ Send
+            </button>
+          </div>
+
         </div>
       </div>
     </template>
@@ -650,6 +676,9 @@
       exTrends: [],
       exLoading: false,
       exFeedback: {},
+      toastMsg: '',
+      toastVisible: false,
+      _toastTimer: null,
       exExpanded: {},
       isNewUser: new URLSearchParams(window.location.search).get('new') === '1',
       signupPollTimer: null,
@@ -887,6 +916,11 @@
 
       async submitExFeedback(headline, type) {
         this.exFeedback[headline] = type;
+        if (type === 'relevant') {
+          this.showToast('👍 Got it — we\'ll surface more like this next run.');
+        } else {
+          this.showToast('👎 Got it — searching for better results in the background…');
+        }
         try {
           await fetch('/trend-feedback', {
             method: 'POST',
@@ -895,15 +929,39 @@
           });
         } catch(e) { console.error('Feedback failed', e); }
       },
+
+      showToast(msg) {
+        this.toastMsg = msg;
+        this.toastVisible = true;
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => { this.toastVisible = false; }, 3500);
+      },
+
+      shareTrend(trend, email) {
+        const subject = encodeURIComponent('TrendLens Signal: ' + trend.headline);
+        const body = encodeURIComponent(
+          'Thought you should see this trend from TrendLens:\n\n' +
+          '📌 ' + trend.headline + '\n\n' +
+          (trend.what_happened ? 'What happened:\n' + trend.what_happened + '\n\n' : '') +
+          (trend.why_it_matters ? 'Why it matters:\n' + trend.why_it_matters + '\n\n' : '') +
+          (trend.pm_action ? '💡 PM action: ' + trend.pm_action + '\n\n' : '') +
+          '— Sent via TrendLens'
+        );
+        const to = email ? encodeURIComponent(email) : '';
+        window.location.href = 'mailto:' + to + '?subject=' + subject + '&body=' + body;
+      },
     };
   }
 
   // ── Existing research tab JS (unchanged below) ────────────────────────────────
-  document.getElementById("domain").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
-  document.getElementById("domain").addEventListener("blur", () => {
-    const d = document.getElementById("domain").value.trim();
-    if (d) loadProfile(d);
-  });
+  const _domainInput = document.getElementById("domain");
+  if (_domainInput) {
+    _domainInput.addEventListener("keydown", e => { if (e.key === "Enter") run(); });
+    _domainInput.addEventListener("blur", () => {
+      const d = _domainInput.value.trim();
+      if (d) loadProfile(d);
+    });
+  }
 
   function fill(text) {
     document.getElementById("domain").value = text;

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+from datetime import date
 
 from fastapi import APIRouter, BackgroundTasks, Cookie, Form, HTTPException, Query
 from fastapi.responses import PlainTextResponse, RedirectResponse
@@ -152,10 +153,22 @@ async def get_history(
 async def get_timeline(
     domain: str,
     days: int = Query(default=30, ge=1, le=90),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
 ) -> dict:
     """Return per-topic scores over time for the trend explorer chart."""
+    if (start_date is None) != (end_date is None):
+        raise HTTPException(status_code=400, detail="Provide both start_date and end_date.")
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(status_code=400, detail="start_date must be before or equal to end_date.")
     try:
-        snapshots = await asyncio.to_thread(history_db.get_timeline, domain, days)
+        snapshots = await asyncio.to_thread(
+            history_db.get_timeline,
+            domain,
+            days,
+            start_date.isoformat() if start_date else None,
+            end_date.isoformat() if end_date else None,
+        )
         return {"domain": domain, "snapshots": snapshots}
     except Exception as exc:
         log.error(f"Timeline lookup failed for domain='{domain}': {exc}", exc_info=True)
@@ -243,8 +256,13 @@ async def signup(
 
 
 @router.post("/trend-feedback", status_code=204)
-async def submit_trend_feedback(body: TrendFeedbackRequest, tl_user_id: str | None = Cookie(default=None)) -> None:
-    """Save relevant/not_relevant feedback for a trend to improve personalization."""
+async def submit_trend_feedback(
+    body: TrendFeedbackRequest,
+    background_tasks: BackgroundTasks,
+    tl_user_id: str | None = Cookie(default=None),
+) -> None:
+    """Save relevant/not_relevant feedback. Thumbs-down also excludes the headline
+    from future runs and triggers a background rerun for the domain."""
     user_id = int(tl_user_id) if tl_user_id and tl_user_id.isdigit() else None
     try:
         await asyncio.to_thread(
@@ -254,9 +272,24 @@ async def submit_trend_feedback(body: TrendFeedbackRequest, tl_user_id: str | No
             body.feedback_type,
             user_id,
         )
+        if body.feedback_type == "not_relevant":
+            await asyncio.to_thread(
+                history_db.save_feedback, "", body.domain, body.item_headline, "incorrect", user_id,
+            )
+            background_tasks.add_task(_rerun_domain, body.domain)
     except Exception as exc:
         log.error(f"Trend feedback failed: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+async def _rerun_domain(domain: str) -> None:
+    """Background rerun after thumbs-down so fresh results replace the disliked trend."""
+    try:
+        config = ResearchConfig(domain=domain, time_window_days=7)
+        await run_research(config, use_cache=False)
+        log.info(f"Rerun complete after thumbs-down | domain='{domain}'")
+    except Exception as exc:
+        log.error(f"Rerun failed | domain='{domain}': {exc}")
 
 
 @router.get("/me/feedback")

@@ -74,6 +74,10 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
     if excluded:
         log.info(f"Excluding {len(excluded)} previously marked-incorrect item(s) | domain='{config.domain}'")
 
+    liked = await asyncio.to_thread(history_db.get_liked_headlines, config.domain)
+    if liked:
+        log.info(f"Found {len(liked)} liked headline(s) to guide research | domain='{config.domain}'")
+
     # Load product profile and merge fields into config (profile fills gaps; request takes precedence)
     profile = await asyncio.to_thread(history_db.get_profile, domain_key)
     if profile:
@@ -90,6 +94,7 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
     report = await research_agent.run(
         config,
         excluded_headlines=excluded or None,
+        liked_headlines=liked or None,
         product_context=product_context,
     )
     report.generated_at = datetime.now(timezone.utc).isoformat()
