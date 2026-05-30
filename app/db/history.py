@@ -211,6 +211,61 @@ def get_profile(domain: str) -> dict | None:
     return json.loads(row["profile_json"]) if row else None
 
 
+def get_timeline(domain: str, days: int = 30) -> list[dict]:
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT run_id, created_at, topics_json
+            FROM snapshots
+            WHERE domain = ? AND created_at >= ?
+            ORDER BY created_at DESC
+            """,
+            (domain.strip().lower(), cutoff),
+        ).fetchall()
+
+    result = []
+    for row in rows:
+        topics_raw = json.loads(row["topics_json"])
+        topics = [
+            {
+                "headline": t.get("headline", ""),
+                "rank": t.get("rank", 0),
+                "weighted_evidence_score": t.get("weighted_evidence_score", 0.0),
+                "confidence": t.get("confidence", "Low"),
+                "classification": t.get("classification", "STABLE BUT IMPORTANT"),
+            }
+            for t in topics_raw
+        ]
+        result.append({
+            "run_id": row["run_id"],
+            "created_at": row["created_at"],
+            "topics": topics,
+        })
+    return result
+
+
+def save_trend_feedback(domain: str, item_headline: str, feedback_type: str) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO feedback (run_id, domain, item_headline, feedback_type, created_at) VALUES (?,?,?,?,?)",
+            ("", domain.strip().lower(), item_headline, feedback_type, now),
+        )
+    log.info(f"Trend feedback saved | domain={domain!r} type={feedback_type}")
+
+
+def get_liked_headlines(domain: str) -> list[str]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT item_headline FROM feedback WHERE domain = ? AND feedback_type = 'relevant'",
+            (domain.strip().lower(),),
+        ).fetchall()
+    return [r["item_headline"] for r in rows]
+
+
 def list_snapshots(domain: str, limit: int = 20) -> list[StoredSnapshot]:
     with _connect() as conn:
         rows = conn.execute(

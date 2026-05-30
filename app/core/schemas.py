@@ -198,3 +198,23 @@ class ProductProfile(BaseModel):
     geographic_market: str = ""
     created_at: str = ""
     updated_at: str = ""
+
+
+class TimelineTopic(BaseModel):
+    headline: str
+    rank: int
+    weighted_evidence_score: float
+    confidence: str
+    classification: str  # "SPIKING VS LAST RUN" | "STABLE BUT IMPORTANT" | "DECLINING" | "NEW THIS RUN" etc.
+
+
+class TimelineSnapshot(BaseModel):
+    run_id: str
+    created_at: str
+    topics: list[TimelineTopic]
+
+
+class TrendFeedbackRequest(BaseModel):
+    domain: str
+    item_headline: str
+    feedback_type: Literal["relevant", "not_relevant"]
