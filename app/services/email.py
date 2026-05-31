@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import smtplib
-import json
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -28,9 +27,9 @@ def send_digest(to_email: str, first_name: str, topics: list[dict], domain: str,
     # Plain-text body
     lines = [
         f"Hi {first_name},",
-        f"",
+        "",
         f"Here are your top trends for {domain} — {freq_label.lower()} digest.",
-        f"",
+        "",
     ]
     for i, t in enumerate(topics[:3], 1):
         lines.append(f"{i}. {t.get('headline', '')}")

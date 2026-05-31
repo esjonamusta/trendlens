@@ -94,4 +94,4 @@ def format_product_context(profile: dict) -> str:
     if not lines:
         return ""
 
-    return "Product context:\n" + "\n".join(f"- {l}" for l in lines) + "\n\n"
+    return "Product context:\n" + "\n".join(f"- {line}" for line in lines) + "\n\n"
