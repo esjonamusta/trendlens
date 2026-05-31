@@ -391,6 +391,25 @@ def create_user(data: dict) -> None:
     log.info(f"User created | email={data['email']!r}")
 
 
+def get_user_by_id(user_id: int) -> dict | None:
+    """Return user row as dict or None if not found."""
+    with _connect() as conn:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def update_user(user_id: int, data: dict) -> None:
+    """Update editable user fields."""
+    fields = ["first_name", "last_name", "product_type", "target_users",
+              "business_model", "product_goal", "keywords", "digest_frequency"]
+    updates = {k: v for k, v in data.items() if k in fields}
+    if not updates:
+        return
+    cols = ", ".join(f"{k} = ?" for k in updates)
+    with _connect() as conn:
+        conn.execute(f"UPDATE users SET {cols} WHERE id = ?", (*updates.values(), user_id))
+
+
 def get_user_by_email(email: str) -> dict | None:
     """Return user row as dict or None if not found."""
     with _connect() as conn:
@@ -453,6 +472,12 @@ def list_digest_users(frequency: str | None = None) -> list[dict]:
                 """
             ).fetchall()
     return [dict(r) for r in rows]
+
+
+def update_digest_last_sent(user_id: int) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute("UPDATE users SET digest_last_sent_at = ? WHERE id = ?", (now, user_id))
 
 
 def list_snapshots(domain: str, limit: int = 20) -> list[StoredSnapshot]:

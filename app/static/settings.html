@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TrendLens — Create Account</title>
+  <title>TrendLens — Profile Settings</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/tokens.css">
   <style>
     :root {
-      /* signup-specific semantic aliases */
       --green-dim:  rgba(34,197,94,0.12);
       --green-brd:  rgba(34,197,94,0.35);
       --purple-dim: rgba(129,140,248,0.12);
@@ -24,8 +23,14 @@
       background: rgba(19,19,20,0.95);
       backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; padding: 0 32px;
+      display: flex; align-items: center; padding: 0 32px; gap: 16px;
     }
+    .back-btn {
+      font-size: 13px; color: var(--text2); text-decoration: none; font-weight: 600;
+      padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .back-btn:hover { border-color: var(--border-hi); color: var(--text); }
 
     .page {
       display: flex; align-items: flex-start; justify-content: center;
@@ -48,8 +53,6 @@
       font-size: 24px; font-weight: 700; letter-spacing: -0.5px;
     }
     .card-header p { font-size: 14px; color: var(--text2); line-height: 1.5; }
-
-    form { display: flex; flex-direction: column; gap: 30px; }
 
     .section { display: flex; flex-direction: column; gap: 16px; }
     .section-label {
@@ -84,6 +87,8 @@
       border-color: var(--purple);
       box-shadow: 0 0 0 3px rgba(129,140,248,0.12);
     }
+    .field input:disabled,
+    .field textarea:disabled { opacity: 0.5; cursor: not-allowed; }
     .field textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
     .field select { appearance: none; cursor: pointer; }
     .field select option { background: var(--surface); }
@@ -139,7 +144,7 @@
 
     .hint { font-size: 11px; color: var(--text2); margin-top: 2px; line-height: 1.45; }
 
-    .btn-submit {
+    .btn-save {
       width: 100%; padding: 14px;
       margin-top: 2px;
       border-radius: var(--r-pill);
@@ -149,13 +154,19 @@
       font-family: "Plus Jakarta Sans", sans-serif;
       transition: opacity 0.15s, transform 0.1s;
     }
-    .btn-submit:hover { opacity: 0.9; }
-    .btn-submit:active { transform: scale(0.99); }
-    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-save:hover { opacity: 0.9; }
+    .btn-save:active { transform: scale(0.99); }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-    .footer-note { font-size: 13px; color: var(--text2); text-align: center; }
-    .footer-note a { color: var(--green); text-decoration: none; font-weight: 600; }
-    .footer-note a:hover { text-decoration: underline; }
+    .success-banner {
+      background: var(--green-dim);
+      border: 1px solid var(--green-brd);
+      border-radius: var(--r-card);
+      padding: 12px 16px;
+      font-size: 13px; color: var(--green);
+      display: none;
+    }
+    .success-banner.visible { display: block; }
 
     .error-banner {
       background: rgba(239,68,68,0.12);
@@ -167,6 +178,8 @@
     }
     .error-banner.visible { display: block; }
 
+    .loading-state { text-align: center; padding: 40px; color: var(--text2); font-size: 14px; }
+
     @media (max-width: 600px) {
       .card { padding: 24px 20px; }
       .row { grid-template-columns: 1fr; }
@@ -176,7 +189,8 @@
 <body>
 
 <header>
-  <a href="/landing.html" class="logo">
+  <a href="/app" class="back-btn">← Back to dashboard</a>
+  <a href="/landing.html" class="logo" style="margin-left:auto;">
     <div class="logo-icon">◈</div>
     <div class="logo-text">TrendLens</div>
   </a>
@@ -186,31 +200,30 @@
   <div class="card">
 
     <div class="card-header">
-      <h1>Create your account</h1>
-      <p>Tell us about your product so TrendLens can personalise your trend signals from day one.</p>
+      <h1>Profile settings</h1>
+      <p>Update your product context — TrendLens uses this to surface more relevant trends.</p>
     </div>
 
-    <form method="POST" action="/signup" id="signup-form">
+    <div class="loading-state" id="loading-state">Loading your profile…</div>
+
+    <div id="form-body" style="display:none; display:flex; flex-direction:column; gap:32px;">
 
       <div class="section">
         <div class="section-label">Account</div>
         <div class="row">
           <div class="field">
             <label for="first_name">First name</label>
-            <input type="text" id="first_name" name="first_name" placeholder="Yeganeh" required/>
+            <input type="text" id="first_name" name="first_name"/>
           </div>
           <div class="field">
             <label for="last_name">Last name</label>
-            <input type="text" id="last_name" name="last_name" placeholder="K." required/>
+            <input type="text" id="last_name" name="last_name"/>
           </div>
         </div>
         <div class="field">
           <label for="email">Email</label>
-          <input type="email" id="email" name="email" placeholder="you@company.com" required/>
-        </div>
-        <div class="field">
-          <label for="password">Password</label>
-          <input type="password" id="password" name="password" placeholder="••••••••" required minlength="8"/>
+          <input type="email" id="email" name="email" disabled/>
+          <div class="hint">Email cannot be changed.</div>
         </div>
       </div>
 
@@ -232,7 +245,7 @@
         <div class="field">
           <label>Business model</label>
           <div class="pill-group" id="biz-model-group">
-            <button type="button" class="pill active" data-value="B2B">B2B</button>
+            <button type="button" class="pill" data-value="B2B">B2B</button>
             <button type="button" class="pill" data-value="B2C">B2C</button>
             <button type="button" class="pill" data-value="Both">Both</button>
             <button type="button" class="pill" data-value="B2B2C">B2B2C</button>
@@ -254,7 +267,6 @@
           <div class="tags-wrap" id="tags-wrap">
             <input type="text" id="tag-input" placeholder="Type a keyword and press Enter…"/>
           </div>
-          <input type="hidden" id="keywords-value" name="keywords"/>
           <div class="hint">These shape which signals TrendLens surfaces for you.</div>
         </div>
       </div>
@@ -265,52 +277,27 @@
           <label>How often should TrendLens email you?</label>
           <div class="pill-group" id="digest-frequency-group">
             <button type="button" class="pill" data-value="daily">Daily</button>
-            <button type="button" class="pill active" data-value="weekly">Weekly</button>
+            <button type="button" class="pill" data-value="weekly">Weekly</button>
             <button type="button" class="pill" data-value="monthly">Monthly</button>
             <button type="button" class="pill" data-value="off">Off</button>
           </div>
           <input type="hidden" id="digest_frequency" name="digest_frequency" value="weekly"/>
-          <div class="hint">You can change this later from account settings.</div>
         </div>
       </div>
 
+      <div class="success-banner" id="success-banner">✓ Profile saved successfully.</div>
       <div class="error-banner" id="error-banner"></div>
 
-      <button type="submit" class="btn-submit">Create account &amp; start tracking →</button>
+      <button type="button" class="btn-save" id="save-btn" onclick="saveProfile()">Save changes</button>
 
-    </form>
-
-    <div class="footer-note">Already have an account? <a href="/login.html">Sign in</a></div>
-
+    </div>
   </div>
 </div>
 
 <script>
-  // Pill toggle — business model
-  document.getElementById('biz-model-group').addEventListener('click', function(e) {
-    var btn = e.target.closest('.pill');
-    if (!btn) return;
-    document.querySelectorAll('#biz-model-group .pill').forEach(function(p) {
-      p.classList.remove('active');
-    });
-    btn.classList.add('active');
-    document.getElementById('business_model').value = btn.getAttribute('data-value');
-  });
-
-  document.getElementById('digest-frequency-group').addEventListener('click', function(e) {
-    var btn = e.target.closest('.pill');
-    if (!btn) return;
-    document.querySelectorAll('#digest-frequency-group .pill').forEach(function(p) {
-      p.classList.remove('active');
-    });
-    btn.classList.add('active');
-    document.getElementById('digest_frequency').value = btn.getAttribute('data-value');
-  });
-
-  // Tag input — safe DOM methods, no innerHTML with user data
+  // ── Tag input ────────────────────────────────────────────────────────────────
   var tagsWrap = document.getElementById('tags-wrap');
   var tagInput = document.getElementById('tag-input');
-  var keywordsHidden = document.getElementById('keywords-value');
   var tags = [];
 
   function buildTagEl(text, index) {
@@ -334,7 +321,6 @@
     tags.forEach(function(tag, i) {
       tagsWrap.insertBefore(buildTagEl(tag, i), tagInput);
     });
-    keywordsHidden.value = tags.join(',');
   }
 
   tagsWrap.addEventListener('click', function(e) {
@@ -359,25 +345,105 @@
     }
   });
 
-  // Form submit — require at least one keyword; disable button to prevent double-submit
-  document.getElementById('signup-form').addEventListener('submit', function(e) {
-    var banner = document.getElementById('error-banner');
-    var btn = document.querySelector('.btn-submit');
-    // Auto-add any pending text in the input so plain typing without Enter still works
+  // ── Pill toggles ─────────────────────────────────────────────────────────────
+  function setupPillGroup(groupId, hiddenId) {
+    document.getElementById(groupId).addEventListener('click', function(e) {
+      var btn = e.target.closest('.pill');
+      if (!btn) return;
+      document.querySelectorAll('#' + groupId + ' .pill').forEach(function(p) {
+        p.classList.remove('active');
+      });
+      btn.classList.add('active');
+      document.getElementById(hiddenId).value = btn.getAttribute('data-value');
+    });
+  }
+  function setActivePill(groupId, hiddenId, value) {
+    document.querySelectorAll('#' + groupId + ' .pill').forEach(function(p) {
+      p.classList.toggle('active', p.getAttribute('data-value') === value);
+    });
+    if (value) document.getElementById(hiddenId).value = value;
+  }
+
+  setupPillGroup('biz-model-group', 'business_model');
+  setupPillGroup('digest-frequency-group', 'digest_frequency');
+
+  // ── Load profile ─────────────────────────────────────────────────────────────
+  async function loadProfile() {
+    try {
+      const res = await fetch('/me');
+      if (res.status === 401) { window.location.href = '/login.html'; return; }
+      if (!res.ok) throw new Error(await res.text());
+      const u = await res.json();
+
+      document.getElementById('first_name').value  = u.first_name || '';
+      document.getElementById('last_name').value   = u.last_name  || '';
+      document.getElementById('email').value        = u.email      || '';
+      document.getElementById('product_type').value = u.product_type  || '';
+      document.getElementById('target_users').value = u.target_users  || '';
+      document.getElementById('product_goal').value = u.product_goal  || '';
+
+      setActivePill('biz-model-group',       'business_model',   u.business_model   || 'B2B');
+      setActivePill('digest-frequency-group','digest_frequency',  u.digest_frequency || 'weekly');
+
+      // Keywords stored as JSON array string
+      try {
+        var kws = JSON.parse(u.keywords || '[]');
+        tags = Array.isArray(kws) ? kws : [];
+      } catch(e) { tags = []; }
+      renderTags();
+
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('form-body').style.display = 'flex';
+    } catch(e) {
+      document.getElementById('loading-state').textContent = 'Failed to load profile: ' + e.message;
+    }
+  }
+
+  // ── Save ─────────────────────────────────────────────────────────────────────
+  async function saveProfile() {
+    var btn = document.getElementById('save-btn');
+    var successBanner = document.getElementById('success-banner');
+    var errorBanner = document.getElementById('error-banner');
+    successBanner.classList.remove('visible');
+    errorBanner.classList.remove('visible');
+
+    // Auto-add pending tag input
     var pending = tagInput.value.trim();
     if (pending && tags.indexOf(pending) === -1) { tags.push(pending); renderTags(); }
     tagInput.value = '';
-    if (tags.length === 0) {
-      e.preventDefault();
-      banner.textContent = 'Please add at least one keyword to track.';
-      banner.classList.add('visible');
-      tagsWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
-      banner.classList.remove('visible');
-      btn.disabled = true;
-      btn.textContent = 'Creating account…';
+
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    var payload = {
+      first_name:       document.getElementById('first_name').value.trim(),
+      last_name:        document.getElementById('last_name').value.trim(),
+      product_type:     document.getElementById('product_type').value.trim(),
+      target_users:     document.getElementById('target_users').value.trim(),
+      business_model:   document.getElementById('business_model').value,
+      product_goal:     document.getElementById('product_goal').value.trim(),
+      keywords:         JSON.stringify(tags),
+      digest_frequency: document.getElementById('digest_frequency').value,
+    };
+
+    try {
+      const res = await fetch('/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      window.location.href = '/app';
+    } catch(e) {
+      errorBanner.textContent = 'Save failed: ' + e.message;
+      errorBanner.classList.add('visible');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save changes';
     }
-  });
+  }
+
+  loadProfile();
 </script>
 
 </body>

@@ -194,6 +194,13 @@ async def run_research(config: ResearchConfig, use_cache: bool = True) -> Resear
             f"days_apart={delta.days_apart} type={delta.comparison_type}"
         )
 
+    # Write delta classifications back into topics before persisting
+    if delta is not None:
+        cls_by_headline = {ins.topic: ins.classification for ins in delta.insights}
+        for t in all_topics:
+            if t.headline in cls_by_headline:
+                t.classification = cls_by_headline[t.headline]
+
     # Persist all topics (including buffer) for a wider matching pool on future runs
     await asyncio.to_thread(
         history_db.save_snapshot,

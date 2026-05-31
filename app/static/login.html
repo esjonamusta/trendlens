@@ -7,38 +7,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/tokens.css">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:        #131314;
-      --surface:   #1C1C1F;
-      --border:    #2D2D30;
-      --text:      #e5e2e3;
-      --text2:     #94A3B8;
-      --green:     #22C55E;
+      /* login-specific semantic aliases */
       --green-dim: rgba(34,197,94,0.12);
       --green-brd: rgba(34,197,94,0.35);
-      --purple:    #818CF8;
-      --r-card:    12px;
-      --r-pill:    999px;
+      --r-card: var(--r);
     }
-
-    html, body { width: 100%; min-height: 100vh; }
-    body { font-family: "Inter", sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
     header {
       position: sticky; top: 0; z-index: 10;
-      height: 64px;
+      height: var(--header-h);
       background: rgba(19,19,20,0.95); backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
       display: flex; align-items: center; padding: 0 32px;
     }
-    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
-    .logo-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--green); display: flex; align-items: center; justify-content: center; font-size: 15px; }
-    .logo-text { font-family: "Plus Jakarta Sans", sans-serif; font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
 
-    .page { display: flex; align-items: center; justify-content: center; padding: 48px 24px 80px; min-height: calc(100vh - 64px); }
+    .page { display: flex; align-items: center; justify-content: center; padding: 48px 24px 80px; min-height: calc(100vh - var(--header-h)); }
 
     .card {
       background: var(--surface);
@@ -53,20 +39,6 @@
     .card-header h1 { font-family: "Plus Jakarta Sans", sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
     .card-header p { font-size: 14px; color: var(--text2); line-height: 1.5; }
 
-    .field { display: flex; flex-direction: column; gap: 6px; }
-    .field label { font-size: 12px; font-weight: 600; color: var(--text2); }
-    .field input {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: var(--r-card);
-      padding: 12px 14px;
-      font-size: 14px; color: var(--text);
-      font-family: "Inter", sans-serif;
-      outline: none; width: 100%;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .field input::placeholder { color: var(--text2); }
-    .field input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(129,140,248,0.12); }
 
     .btn-login {
       width: 100%; padding: 14px;
@@ -112,20 +84,20 @@
       <p>Welcome back. Sign in to see your trend signals.</p>
     </div>
 
-    <form method="POST" action="/login" id="login-form">
+    <form id="login-form" onsubmit="handleLogin(event)">
       <div style="display:flex;flex-direction:column;gap:16px;">
         <div class="field">
           <label for="email">Email</label>
-          <input type="email" id="email" name="email" value="demo@trendlens.com" required/>
+          <input type="email" id="email" name="email" placeholder="you@company.com" autocomplete="email" required/>
         </div>
         <div class="field">
           <label for="password">Password</label>
-          <input type="password" id="password" name="password" value="demo1234" required/>
+          <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required/>
         </div>
 
-        <div class="error-banner" id="error-banner"></div>
+        <div class="error-banner" id="error-banner" role="alert"></div>
 
-        <button type="submit" class="btn-login">Sign in →</button>
+        <button type="submit" class="btn-login" id="submit-btn">Sign in →</button>
       </div>
     </form>
 
@@ -133,6 +105,51 @@
 
   </div>
 </div>
+
+<script>
+  async function handleLogin(e) {
+    e.preventDefault();
+
+    const btn    = document.getElementById('submit-btn');
+    const banner = document.getElementById('error-banner');
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    // Reset
+    banner.textContent = '';
+    banner.classList.remove('visible');
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+
+    try {
+      const body = new URLSearchParams({ email, password });
+      const res  = await fetch('/login', { method: 'POST', body, redirect: 'follow' });
+
+      if (res.ok || res.redirected) {
+        window.location.href = res.url || '/app';
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      const msg  = data.detail || 'Something went wrong. Please try again.';
+      banner.textContent = res.status === 401 ? 'Incorrect email or password.' : msg;
+      banner.classList.add('visible');
+    } catch {
+      banner.textContent = 'Network error — please check your connection.';
+      banner.classList.add('visible');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Sign in →';
+    }
+  }
+
+  // Submit on Enter in either field
+  ['email', 'password'].forEach(id =>
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') handleLogin(e);
+    })
+  );
+</script>
 
 </body>
 </html>

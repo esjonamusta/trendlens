@@ -102,10 +102,14 @@ async def upsert_profile(domain: str, body: ProductProfile) -> ProductProfile:
 
 
 @router.post("/domains", response_model=TrackedDomain, status_code=201)
-async def add_domain(body: AddDomainRequest) -> TrackedDomain:
-    """Add a domain to the auto-research watch list."""
+async def add_domain(
+    body: AddDomainRequest,
+    tl_user_id: str | None = Cookie(default=None),
+) -> TrackedDomain:
+    """Add a domain to the auto-research watch list for the current user."""
+    user_id = int(tl_user_id) if tl_user_id and tl_user_id.isdigit() else None
     try:
-        row = await asyncio.to_thread(td_db.add_domain, body.domain)
+        row = await asyncio.to_thread(td_db.add_domain, body.domain, user_id)
     except Exception as exc:
         log.error(f"Add domain failed: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -113,9 +117,10 @@ async def add_domain(body: AddDomainRequest) -> TrackedDomain:
 
 
 @router.get("/domains", response_model=list[TrackedDomain])
-async def list_domains() -> list[TrackedDomain]:
-    """Return all tracked domains."""
-    rows = await asyncio.to_thread(td_db.list_domains)
+async def list_domains(tl_user_id: str | None = Cookie(default=None)) -> list[TrackedDomain]:
+    """Return tracked domains for the current user."""
+    user_id = int(tl_user_id) if tl_user_id and tl_user_id.isdigit() else None
+    rows = await asyncio.to_thread(td_db.list_domains, user_id)
     return [TrackedDomain(**r) for r in rows]
 
 
@@ -226,9 +231,12 @@ async def signup(
     except ValueError:
         raise HTTPException(status_code=400, detail="Email already registered.")
 
+    new_user = await asyncio.to_thread(history_db.get_user_by_email, user_data["email"])
+    new_user_id = new_user["id"] if new_user else None
+
     for keyword in keyword_list:
         try:
-            await asyncio.to_thread(td_db.add_domain, keyword)
+            await asyncio.to_thread(td_db.add_domain, keyword, new_user_id)
         except Exception:
             pass  # domain already tracked — fine
 
@@ -250,10 +258,9 @@ async def signup(
     if keyword_list:
         background_tasks.add_task(_run_research_for_keywords, keyword_list, target_users, product_goal)
 
-    user = await asyncio.to_thread(history_db.get_user_by_email, user_data["email"])
     # Redirect to /app?new=1 so the Explorer knows to show a loading state
     response = RedirectResponse("/app?new=1", status_code=303)
-    response.set_cookie("tl_user_id", str(user["id"]), max_age=60 * 60 * 24 * 30, httponly=True, samesite="lax")
+    response.set_cookie("tl_user_id", str(new_user_id), max_age=60 * 60 * 24 * 30, httponly=True, samesite="lax")
     response.set_cookie("tl_user_name", user_data["first_name"], max_age=60 * 60 * 24 * 30, samesite="lax")
     return response
 
@@ -293,6 +300,32 @@ async def _rerun_domain(domain: str) -> None:
         log.info(f"Rerun complete after thumbs-down | domain='{domain}'")
     except Exception as exc:
         log.error(f"Rerun failed | domain='{domain}': {exc}")
+
+
+@router.get("/me")
+async def get_me(tl_user_id: str | None = Cookie(default=None)) -> dict:
+    """Return the current user's profile data."""
+    if not tl_user_id or not tl_user_id.isdigit():
+        raise HTTPException(status_code=401, detail="Not logged in.")
+    user = await asyncio.to_thread(history_db.get_user_by_id, int(tl_user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    user.pop("password_hash", None)
+    return user
+
+
+@router.put("/me")
+async def update_me(body: dict, tl_user_id: str | None = Cookie(default=None)) -> dict:
+    """Update the current user's editable profile fields."""
+    if not tl_user_id or not tl_user_id.isdigit():
+        raise HTTPException(status_code=401, detail="Not logged in.")
+    try:
+        await asyncio.to_thread(history_db.update_user, int(tl_user_id), body)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    user = await asyncio.to_thread(history_db.get_user_by_id, int(tl_user_id))
+    user.pop("password_hash", None)
+    return user
 
 
 @router.get("/me/feedback")

@@ -83,6 +83,7 @@ class TopicSnapshot(BaseModel):
     last_seen_at: str = ""              # ISO timestamp of most recent run containing this topic
     canonical_topic_id: str = ""        # deterministic MD5 hash of sorted keywords (first 12 chars)
     weighted_evidence_score: float = 0.0  # quality-weighted evidence score for trend tracking
+    classification: str = ""            # delta classification written back after compute_delta()
 
 
 class ScoreBreakdown(BaseModel):

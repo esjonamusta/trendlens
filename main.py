@@ -8,9 +8,9 @@ Usage:
 from __future__ import annotations
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import Cookie, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
@@ -47,7 +47,9 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
     @app.get("/", include_in_schema=False)
-    async def index() -> FileResponse:
+    async def index(tl_user_id: str | None = Cookie(default=None)) -> Response:
+        if tl_user_id and tl_user_id.isdigit():
+            return RedirectResponse("/app", status_code=302)
         return FileResponse(
             "app/static/landing.html",
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
@@ -71,6 +73,13 @@ def create_app() -> FastAPI:
     async def signup_page() -> FileResponse:
         return FileResponse(
             "app/static/signup.html",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
+
+    @app.get("/settings.html", include_in_schema=False)
+    async def settings_page() -> FileResponse:
+        return FileResponse(
+            "app/static/settings.html",
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
         )
 

@@ -7,6 +7,8 @@ inside the job to avoid hammering APIs in parallel.
 """
 from __future__ import annotations
 
+import asyncio
+import json
 from datetime import datetime, timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -48,16 +50,43 @@ async def run_all_tracked_domains() -> None:
 
 
 async def run_email_digest(frequency: str) -> None:
-    """Placeholder digest job. A real email provider can plug in here."""
+    """Send digest emails to all users subscribed at the given frequency."""
+    from app.core.pipeline import run_research
+    from app.services.email import send_digest
+
     users = history_db.list_digest_users(frequency)
     if not users:
         log.info(f"Digest tick — no {frequency} users")
         return
+
+    log.info(f"Digest tick — {len(users)} {frequency} user(s)")
+
     for user in users:
-        log.info(
-            f"Digest queued | frequency={frequency} "
-            f"email={user['email']!r} keywords={user.get('keywords', '')}"
-        )
+        email = user.get("email", "")
+        first_name = user.get("first_name", "there")
+        try:
+            keywords = json.loads(user.get("keywords") or "[]")
+        except Exception:
+            keywords = []
+
+        domain = keywords[0] if keywords else ""
+        if not domain:
+            log.info(f"Digest skip — no domain | email={email!r}")
+            continue
+
+        try:
+            config = ResearchConfig(domain=domain)
+            report = await run_research(config, use_cache=True)
+            topics = [t.model_dump() for t in report.items[:3]] if report.items else []
+        except Exception as exc:
+            log.error(f"Digest research failed | email={email!r} domain={domain!r}: {exc}")
+            topics = []
+
+        try:
+            await asyncio.to_thread(send_digest, email, first_name, topics, domain, frequency)
+            history_db.update_digest_last_sent(user["id"])
+        except Exception as exc:
+            log.error(f"Digest send failed | email={email!r}: {exc}")
 
 
 def start() -> None:

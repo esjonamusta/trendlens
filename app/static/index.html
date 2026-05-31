@@ -267,64 +267,6 @@
     /* Alpine cloak — hide until Alpine initialises */
     [x-cloak] { display: none !important; }
 
-    /* ── Tab navigation ── */
-    .tab-nav { display: flex; border-bottom: 1px solid var(--border); padding: 0 32px; background: var(--bg); position: sticky; top: 61px; z-index: 9; }
-    .tab-btn { font-size: 13px; font-weight: 600; font-family: inherit; color: var(--text3); background: none; border: none; border-bottom: 2px solid transparent; padding: 10px 18px; cursor: pointer; transition: color 0.15s, border-color 0.15s; margin-bottom: -1px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
-    .tab-btn:hover { color: var(--text2); }
-    .tab-btn.active-tab { color: var(--text); border-bottom-color: var(--accent); }
-    .tab-sub { font-size: 10px; font-weight: 400; color: var(--text3); letter-spacing: 0.03em; }
-    .tab-btn.active-tab .tab-sub { color: var(--text3); }
-
-    /* ── Dashboard layout ── */
-    .dashboard { display: flex; height: calc(100vh - 112px); max-width: 1100px; margin: 0 auto; }
-
-    .domain-sidebar { width: 230px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; padding: 16px 0; }
-    .sidebar-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); padding: 0 16px 10px; }
-    .domain-item { display: flex; align-items: center; gap: 9px; padding: 9px 16px; cursor: pointer; transition: background 0.12s; }
-    .domain-item:hover { background: var(--surface); }
-    .domain-item.d-active { background: rgba(34,197,94,0.08); }
-    .domain-item-name { font-size: 13px; color: var(--text2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize; }
-    .domain-item.d-active .domain-item-name { color: var(--text); font-weight: 600; }
-    .d-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-    .d-done    { background: var(--green); }
-    .d-running { background: var(--accent); animation: blink 1.2s ease-in-out infinite; }
-    .d-error   { background: var(--red); }
-    .d-pending { background: var(--text3); }
-    .sidebar-add { padding: 12px 16px 0; margin-top: auto; border-top: 1px solid var(--border); }
-    .sidebar-add-row { display: flex; gap: 6px; margin-top: 4px; }
-    .sidebar-add-label { font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-    .sidebar-add input { flex: 1; background: var(--srf2); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; font-size: 12px; font-family: inherit; color: var(--text); outline: none; }
-    .sidebar-add input:focus { border-color: var(--accent); }
-    .sidebar-add input::placeholder { color: var(--text3); }
-    .sidebar-add button { font-size: 16px; font-weight: 700; font-family: inherit; background: rgba(34,197,94,0.15); color: var(--accent); border: 1px solid rgba(34,197,94,0.3); border-radius: 7px; padding: 0 11px; cursor: pointer; transition: background 0.15s; }
-    .sidebar-add button:hover { background: rgba(34,197,94,0.25); }
-    .sidebar-empty { font-size: 12px; color: var(--text3); padding: 6px 16px; line-height: 1.5; }
-
-    .domain-detail { flex: 1; overflow-y: auto; padding: 24px 32px; }
-    .detail-empty { font-size: 14px; color: var(--text3); margin-top: 60px; text-align: center; }
-    .detail-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 6px; }
-    .detail-domain { font-size: 19px; font-weight: 800; color: var(--text); letter-spacing: -0.4px; text-transform: capitalize; }
-    .detail-meta-txt { font-size: 12px; color: var(--text3); }
-
-    .dont-miss { background: rgba(34,197,94,0.07); border: 1px solid rgba(34,197,94,0.2); border-radius: var(--r); padding: 16px 18px; margin-bottom: 18px; }
-    .dont-miss-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--accent); margin-bottom: 8px; }
-    .dont-miss-hl { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.4; margin-bottom: 8px; }
-    .dont-miss-row { display: flex; align-items: center; gap: 8px; }
-    .detail-conf { font-size: 11px; color: var(--text3); }
-
-    .dash-topics { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
-    .dash-topic { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; transition: border-color 0.2s; }
-    .dash-topic:hover { border-color: var(--brd2); }
-    .dash-rank { font-size: 11px; font-weight: 700; color: var(--text3); background: var(--srf2); border: 1px solid var(--border); border-radius: 4px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .dash-hl { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; line-height: 1.4; }
-    .dash-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; }
-    .db-new      { background: rgba(34,197,94,0.12); color: #22C55E; border: 1px solid rgba(34,197,94,0.25); }
-    .db-spiking  { background: rgba(34,197,94,0.10);  color: #22c55e; border: 1px solid rgba(34,197,94,0.25); }
-    .db-declining{ background: rgba(239,68,68,0.08);  color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
-    .db-stable   { background: rgba(245,158,11,0.08); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }
-
-    .run-research-btn { font-size: 13px; font-weight: 600; font-family: inherit; background: rgba(34,197,94,0.12); color: #22C55E; border: 1px solid rgba(34,197,94,0.25); border-radius: 8px; padding: 9px 18px; cursor: pointer; transition: background 0.15s; }
-    .run-research-btn:hover { background: rgba(34,197,94,0.22); }
 
     /* ── Trend Explorer — Obsidian Momentum design system ── */
     /* Tokens: green=#22C55E, purple=#818CF8, bg=#131314, border=#2D2D30, muted=#94A3B8 */
@@ -350,6 +292,29 @@
     .ex-time-tabs { display: flex; gap: 4px; background: #1c1b1c; border: 1px solid #2D2D30; border-radius: 999px; padding: 4px; }
     .ex-time-tab { padding: 5px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; color: #94A3B8; transition: all 0.15s; border: none; background: transparent; font-family: inherit; }
     .ex-time-tab.time-active { background: #22c55e; color: #003915; font-weight: 700; }
+    .ex-class-filter { display: flex; gap: 6px; }
+    .ex-cls-btn { padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 600; cursor: pointer; color: #5a5a5e; border: 1px solid #2D2D30; background: transparent; font-family: inherit; transition: all 0.15s; }
+    .ex-cls-btn:hover { color: #94A3B8; border-color: #3a393a; }
+    .ex-cls-btn.cls-active { color: #e5e2e3; border-color: #4a4a4e; background: #2a2a2b; }
+
+    /* Email digest chips */
+    .digest-chips { display: flex; gap: 6px; }
+    .digest-chip {
+      padding: 5px 14px; border-radius: 999px; font-size: 12px; font-weight: 700;
+      font-family: "JetBrains Mono", monospace; cursor: pointer;
+      color: #5a5a5e; border: 1px solid #2D2D30; background: transparent;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .digest-chip:hover { color: #94A3B8; border-color: #3a393a; }
+    .digest-chip.digest-active {
+      background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.45);
+      color: #22C55E;
+    }
+    .digest-status {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; color: #5a5a5e; line-height: 1.4; margin-top: 2px;
+    }
+    .digest-status.is-on { color: #22C55E; }
     .custom-date-row { display: flex; align-items: end; gap: 8px; flex-wrap: wrap; margin-top: -10px; }
     .custom-date-field { display: flex; flex-direction: column; gap: 5px; }
     .custom-date-field label { font-size: 10px; font-weight: 700; color: #94A3B8; letter-spacing: 0.06em; text-transform: uppercase; }
@@ -379,7 +344,130 @@
     .custom-date-error { font-size: 11px; color: #ef4444; }
 
     /* Personalized hint — green tint */
-    .personal-hint { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2); border-radius: 10px; padding: 10px 14px; font-size: 12px; color: #22c55e; display: flex; align-items: center; gap: 8px; }
+    .personal-hint {
+      background: rgba(34,197,94,0.06);
+      border: 1px solid rgba(34,197,94,0.18);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #5a9a6a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      line-height: 1.5;
+    }
+    .personal-hint strong {
+      color: #22c55e;
+      font-weight: 700;
+    }
+    .edit-profile-btn {
+      margin-left: auto; flex-shrink: 0;
+      background: transparent; border: none; cursor: pointer;
+      font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 600;
+      color: #5a9a6a; letter-spacing: 0.06em;
+      padding: 2px 6px; border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .edit-profile-btn:hover { color: #22c55e; background: rgba(34,197,94,0.1); }
+    .edit-profile-form {
+      background: #1c1b1c; border: 1px solid #2D2D30; border-radius: 10px;
+      padding: 16px; display: flex; flex-direction: column; gap: 12px;
+    }
+    .edit-profile-row { display: flex; flex-direction: column; gap: 5px; }
+    .edit-profile-label {
+      font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em; color: #94A3B8;
+    }
+    .edit-profile-input {
+      background: #131314; border: 1px solid #2D2D30; border-radius: 8px;
+      padding: 9px 12px; font-size: 13px; color: #e5e2e3; font-family: inherit; outline: none;
+      transition: border-color 0.2s;
+    }
+    .edit-profile-input:focus { border-color: rgba(34,197,94,0.45); }
+    .edit-profile-hint { font-size: 11px; color: #5a5a5e; }
+
+    /* ── Product selector bar (replaces static hint) ── */
+    .product-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .product-bar-label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      color: #5a5a5e;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+    /* Add-product trigger button */
+    .add-product-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 13px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      border: 1px dashed #3a393a;
+      background: transparent;
+      color: #5a5a5e;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .add-product-btn:hover,
+    .add-product-btn.open {
+      border-color: rgba(34,197,94,0.45);
+      color: #22c55e;
+      background: rgba(34,197,94,0.05);
+      border-style: solid;
+    }
+
+    /* Inline add-product form */
+    .add-product-form {
+      background: #1c1b1c;
+      border: 1px solid rgba(34,197,94,0.25);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .add-product-form input {
+      flex: 1;
+      min-width: 160px;
+      background: #131314;
+      border: 1px solid #2D2D30;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      color: #e5e2e3;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .add-product-form input::placeholder { color: #5a5a5e; }
+    .add-product-form input:focus { border-color: rgba(34,197,94,0.5); }
+    .add-product-save {
+      padding: 8px 18px;
+      border-radius: 999px;
+      background: rgba(34,197,94,0.15);
+      border: 1px solid rgba(34,197,94,0.35);
+      color: #22c55e;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .add-product-save:hover { background: rgba(34,197,94,0.25); border-color: rgba(34,197,94,0.55); }
+    .add-product-save:disabled { opacity: 0.4; cursor: not-allowed; }
 
     /* Trend rows */
     .signup-progress {
@@ -427,21 +515,38 @@
       padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 0;
     }
-    .report-footer-head {
+    .footer-section { padding: 12px 0; display: flex; flex-direction: column; gap: 8px; }
+    .footer-section:first-child { padding-top: 0; }
+    .footer-section:last-child { padding-bottom: 0; }
+    .footer-section-head {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
       gap: 12px;
       flex-wrap: wrap;
     }
-    .report-footer-title {
+    .footer-section-title {
       font-size: 13px;
       font-weight: 800;
       color: #e5e2e3;
     }
+    .footer-section-sub { font-size: 12px; color: #5a5a5e; line-height: 1.4; }
+    .footer-divider { height: 1px; background: #2D2D30; margin: 0 -16px; }
     .report-footer-meta { font-size: 11px; color: #94A3B8; }
+    .invite-btn {
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(129,140,248,0.12);
+      border: 1px solid rgba(129,140,248,0.3);
+      color: #818cf8;
+      font-size: 12px; font-weight: 700; font-family: inherit;
+      cursor: pointer; white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .invite-btn:hover { opacity: 0.85; }
+    .invite-btn:disabled { opacity: 0.35; cursor: not-allowed; }
     .share-report {
       display: flex;
       align-items: center;
@@ -488,31 +593,137 @@
     }
     .share-report button.secondary:hover { color: #e5e2e3; border-color: #3a393a; }
 
-    .ex-trend-row { background: #1c1b1c; border: 1px solid #2D2D30; border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: border-color 0.15s; }
-    .ex-trend-row:hover { border-color: rgba(34,197,94,0.35); box-shadow: 0 0 0 1px rgba(34,197,94,0.1); }
-    .ex-rank { font-family: "JetBrains Mono", monospace; font-size: 16px; font-weight: 600; color: rgba(255,255,255,0.15); width: 20px; flex-shrink: 0; }
+    /* ── Trend row: rank-1 prominence + left accent stripe ── */
+    .ex-trend-row {
+      background: #1c1b1c;
+      border: 1px solid #2D2D30;
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    /* Left accent stripe — colored by classification via data attribute */
+
+    /* Rank-1 row gets a subtle elevated look */
+    .ex-trend-row.rank-1 {
+      background: #202020;
+      border-color: #383737;
+    }
+    .ex-trend-row.rank-1:hover { border-color: rgba(34,197,94,0.45); box-shadow: 0 2px 16px rgba(0,0,0,0.35); }
+    .ex-trend-row:not(.rank-1):hover { border-color: rgba(34,197,94,0.28); box-shadow: 0 1px 8px rgba(0,0,0,0.2); }
+
+    /* Rank number — stronger at rank 1, fades for lower ranks */
+    .ex-rank {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 15px;
+      font-weight: 700;
+      width: 22px;
+      flex-shrink: 0;
+      text-align: right;
+    }
+    .ex-trend-row.rank-1 .ex-rank { color: rgba(255,255,255,0.55); font-size: 17px; }
+    .ex-trend-row.rank-2 .ex-rank { color: rgba(255,255,255,0.30); }
+    .ex-trend-row.rank-3 .ex-rank { color: rgba(255,255,255,0.20); }
+    /* fallback for rank 4+ */
+    .ex-rank { color: rgba(255,255,255,0.18); }
+
     .ex-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-    .ex-title { font-family: "Plus Jakarta Sans", sans-serif; font-size: 14px; font-weight: 600; color: #e5e2e3; line-height: 1.4; }
-    .ex-meta  { font-size: 11px; color: #94A3B8; }
-    .ex-right { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; }
-    .ex-sparkline { flex-shrink: 0; width: 64px; height: 24px; }
+
+    /* Title: rank-1 is larger & brighter */
+    .ex-title {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: #c8c5c6;
+      line-height: 1.4;
+    }
+    .ex-trend-row.rank-1 .ex-title { font-size: 15px; font-weight: 700; color: #e5e2e3; }
+
+    /* Meta line: confidence + score bar */
+    .ex-meta  {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #94A3B8;
+    }
+    .ex-score-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .ex-score-pip {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: #2D2D30;
+      flex-shrink: 0;
+    }
+    .ex-score-pip.filled { background: #22c55e; }
+    .ex-score-pip.half   { background: rgba(34,197,94,0.35); }
+
+    .ex-right { display: flex; flex-direction: row; align-items: center; gap: 10px; flex-shrink: 0; }
+
+    /* Sparkline: taller, wider, higher-contrast stroke */
+    .ex-sparkline { flex-shrink: 0; width: 60px; height: 20px; opacity: 0.7; }
 
     /* Shine border badge — same green/amber/red but darker inner bg matches new surface */
-    .shine-btn { position: relative; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; padding: 0; }
-    .shine-btn::before { content: ""; position: absolute; inset: -100%; background: conic-gradient(from 0deg, transparent 35%, var(--shine) 48%, white 50%, var(--shine) 52%, transparent 65%); animation: shineSpin var(--speed,2.5s) linear infinite; }
-    @keyframes shineSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-    .shine-btn::after { content: ""; position: absolute; inset: 1.5px; border-radius: 999px; background: var(--sbg); }
+    .shine-btn { border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--sbg); border: 1px solid var(--shine); }
     .shine-label { font-family: "JetBrains Mono", monospace; position: relative; z-index: 2; padding: 5px 13px; font-size: 11px; font-weight: 600; color: var(--scolor); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
     .shine-spiking  { --shine:#22c55e; --sbg:#0a1a0e; --scolor:#22c55e; --speed:2.5s; }
     .shine-stable   { --shine:#f59e0b; --sbg:#1a1208; --scolor:#f59e0b; --speed:3.5s; }
     .shine-declining{ --shine:#ef4444; --sbg:#1a0a0a; --scolor:#ef4444; --speed:2s;   }
 
-    /* Feedback pill */
-    .pill-feedback { display: flex; background: #201f20; border-radius: 999px; padding: 3px; gap: 2px; border: 1px solid #2D2D30; }
-    .pf-btn { padding: 4px 11px; border-radius: 999px; font-size: 11px; font-weight: 600; cursor: pointer; color: #94A3B8; transition: all 0.15s; border: none; background: transparent; font-family: inherit; }
-    .pf-btn:hover { color: #e5e2e3; }
-    .pf-liked    { background: rgba(34,197,94,0.15) !important; color: #22c55e !important; }
-    .pf-disliked { background: rgba(239,68,68,0.15) !important; color: #ef4444 !important; }
+    /* Feedback pill — ghost buttons, transparent at rest, responsive on hover */
+    .pill-feedback {
+      display: flex;
+      background: transparent;
+      border-radius: 999px;
+      padding: 0;
+      gap: 4px;
+      border: none;
+    }
+    .pf-btn {
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #5a5a5e;
+      opacity: 0.4;
+      transition: color 0.18s, background 0.18s, opacity 0.18s, border-color 0.18s;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: transparent;
+      font-family: inherit;
+      line-height: 1;
+    }
+    .pf-btn:hover { color: #94A3B8; background: rgba(255,255,255,0.06); opacity: 1; border-color: rgba(255,255,255,0.22); }
+    .pf-liked    { opacity: 1 !important; background: rgba(34,197,94,0.12) !important; color: #22c55e !important; border-color: rgba(34,197,94,0.4) !important; }
+    .pf-disliked { opacity: 1 !important; background: rgba(239,68,68,0.12) !important; color: #ef4444 !important; border-color: rgba(239,68,68,0.4) !important; }
+
+    /* "See more" button — distinct from domain chips */
+    .see-more-btn {
+      align-self: center;
+      margin-top: 4px;
+      padding: 8px 20px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      background: transparent;
+      border: 1px dashed #3a393a;
+      color: #94A3B8;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .see-more-btn:hover {
+      border-color: rgba(34,197,94,0.45);
+      color: #22c55e;
+      background: rgba(34,197,94,0.05);
+      border-style: solid;
+    }
 
     .ex-empty { text-align: center; padding: 48px 24px; color: #94A3B8; font-size: 14px; }
 
@@ -539,6 +750,45 @@
       border-radius: 10px; padding: 10px 14px;
       font-size: 13px; color: #22c55e; font-weight: 600;
     }
+
+    /* ── Mobile breakpoints ── */
+    @media (max-width: 640px) {
+      header { padding: 12px 16px; }
+
+      .explorer-page { padding: 16px; gap: 16px; }
+
+      /* Controls stack vertically */
+      .explorer-controls { flex-direction: column; align-items: stretch; }
+      .mode-tab { flex: 1; justify-content: center; font-size: 12px; padding: 8px 10px; }
+      .ex-time-tab { flex: 1; text-align: center; font-size: 11px; padding: 5px 6px; }
+
+      /* Trend row: let content wrap so badge + feedback drop below title */
+      .ex-main-row { flex-wrap: wrap; }
+      .ex-sparkline { display: none; }
+      .ex-info { width: calc(100% - 36px); } /* fill row minus rank */
+      .ex-right { flex-direction: row; flex-wrap: wrap; gap: 6px; width: 100%; justify-content: space-between; align-items: center; }
+      .pf-btn { font-size: 10px; padding: 3px 7px; }
+      .ex-trend-row.rank-1 .ex-title { font-size: 14px; }
+      .see-more-btn { width: 100%; text-align: center; }
+
+      /* Signup progress: stack vertically */
+      .signup-progress { flex-direction: column; gap: 10px; align-items: flex-start; }
+      .signup-progress-actions { width: 100%; }
+
+      /* Product bar on mobile: stack label above chips */
+      .product-bar { flex-wrap: wrap; }
+      .add-product-btn { margin-left: auto; }
+      .add-product-form { flex-direction: column; align-items: stretch; }
+      .add-product-form input { min-width: 0; }
+      .add-product-save { width: 100%; text-align: center; }
+
+      /* Share report: stack email input and buttons */
+      .share-report { flex-wrap: wrap; }
+      .share-report input { min-width: 0; width: 100%; }
+
+      /* Custom date row: already wraps, reduce gap */
+      .custom-date-row { gap: 8px; }
+    }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
@@ -553,7 +803,7 @@
      x-text="toastMsg"></div>
 
 <header>
-  <a href="/landing.html" class="logo">
+  <a href="/app" class="logo">
     <div class="logo-icon">◈</div>
     <span class="logo-text">TrendLens</span>
   </a>
@@ -574,7 +824,7 @@
       <div>
         <div class="signup-progress-title">Building your first trend reports</div>
         <div class="signup-progress-copy">
-          Research is running in the background for your signup keywords. This page will refresh as results arrive.
+          Research is running in the background for your products. This page will refresh as results arrive.
         </div>
       </div>
     </div>
@@ -587,79 +837,85 @@
 
   <!-- Controls -->
   <div class="explorer-controls">
-    <div class="mode-tabs">
-      <button class="mode-tab" :class="{ 'mode-active': exMode === 'personalized' }" @click="exMode = 'personalized'">
-        ✦ Personalized <span class="mode-badge badge-personal">For you</span>
-      </button>
-      <button class="mode-tab" :class="{ 'mode-active': exMode === 'general' }" @click="exMode = 'general'">
-        🌐 General <span class="mode-badge badge-general">All trends</span>
-      </button>
-    </div>
     <div class="ex-time-tabs">
-      <button class="ex-time-tab" :class="{ 'time-active': exTime === 'yesterday' }" @click="exTime = 'yesterday'; loadExTrends()">Yesterday</button>
-      <button class="ex-time-tab" :class="{ 'time-active': exTime === 'today' }"     @click="exTime = 'today'; loadExTrends()">Today</button>
-      <button class="ex-time-tab" :class="{ 'time-active': exTime === 'week' }"      @click="exTime = 'week'; loadExTrends()">This Week</button>
-      <button class="ex-time-tab" :class="{ 'time-active': exTime === 'custom' }" @click="selectCustomDates()">Custom 📅</button>
+      <button class="ex-time-tab" :class="{ 'time-active': exTime === 'today' }"  @click="exTime = 'today'; exClassFilter = 'all'; loadExTrends()">Today</button>
+      <button class="ex-time-tab" :class="{ 'time-active': exTime === 'week' }"   @click="exTime = 'week';  loadExTrends()">This Week</button>
+      <button class="ex-time-tab" :class="{ 'time-active': exTime === 'month' }"  @click="exTime = 'month'; loadExTrends()">This Month</button>
     </div>
-  </div>
-  <div class="custom-date-row" x-show="exTime === 'custom'" x-transition>
-    <div class="custom-date-field">
-      <label for="customStart">Start</label>
-      <input id="customStart" type="date" x-model="customStartDate" :max="customEndDate || todayDate">
-    </div>
-    <div class="custom-date-field">
-      <label for="customEnd">End</label>
-      <input id="customEnd" type="date" x-model="customEndDate" :min="customStartDate" :max="todayDate">
-    </div>
-    <button class="custom-date-apply" type="button" @click="loadExTrends()" :disabled="!customStartDate || !customEndDate">Apply</button>
-    <span class="custom-date-error" x-show="customDateError" x-text="customDateError"></span>
   </div>
 
-  <!-- Personalized hint -->
-  <div class="personal-hint" x-show="exMode === 'personalized'">
-    ✦ Trends for <strong x-text="exDomain"></strong>. Your 👍 ratings improve personalization over time.
+  <!-- Classification filter — only for month / year -->
+  <div class="ex-class-filter" x-show="exTime === 'week' || exTime === 'month'" x-transition>
+    <button class="ex-cls-btn" :class="{ 'cls-active': exClassFilter === 'all' }"      @click="exClassFilter = 'all'">All</button>
+    <button class="ex-cls-btn" :class="{ 'cls-active': exClassFilter === 'spiking' }"  @click="exClassFilter = 'spiking'">↑ Spiking</button>
+    <button class="ex-cls-btn" :class="{ 'cls-active': exClassFilter === 'stable' }"   @click="exClassFilter = 'stable'">→ Stable</button>
+    <button class="ex-cls-btn" :class="{ 'cls-active': exClassFilter === 'declining' }" @click="exClassFilter = 'declining'">↓ Declining</button>
   </div>
+
+  <!-- Product hint + edit -->
+  <div class="personal-hint">
+    ✦ Trends for <strong x-text="exDomain"></strong>.
+    <a href="/settings.html" class="edit-profile-btn">✎ Edit product</a>
+  </div>
+
 
   <!-- Loading -->
   <div class="ex-empty" x-show="exLoading">Loading trends…</div>
 
   <!-- Empty state -->
   <div class="ex-empty" x-show="!exLoading && filteredExTrends().length === 0">
-    No trends found. Try running a research report first, or add a domain.
+    No trends found. Try running a research report first, or add a product.
   </div>
 
   <!-- Trend rows -->
   <div x-show="!exLoading && filteredExTrends().length > 0" style="display:flex;flex-direction:column;gap:10px;">
     <template x-for="(trend, idx) in filteredExTrends()" :key="trend.headline">
-      <div class="ex-trend-row" :style="exExpanded[trend.headline] ? 'align-items:flex-start;flex-direction:column;' : ''"
+      <div class="ex-trend-row"
+           :class="`rank-${idx + 1}`"
+           :data-cls="exBadgeClass(trend.classification).replace('shine-','')"
+           style="flex-direction:column;align-items:stretch;"
            @click="exExpanded = {...exExpanded, [trend.headline]: !exExpanded[trend.headline]}">
 
         <!-- Main row (always visible) -->
-        <div style="display:flex;align-items:center;gap:16px;width:100%;">
+        <div class="ex-main-row" style="display:flex;align-items:center;gap:16px;width:100%;">
           <div class="ex-rank" x-text="idx + 1"></div>
           <div class="ex-info">
             <div class="ex-title" x-text="trend.headline"></div>
-            <div class="ex-meta" x-text="`${trend.confidence} confidence · score ${(trend.weighted_evidence_score || 0).toFixed(1)}`"></div>
-          </div>
-          <!-- Inline SVG sparkline -->
-          <svg class="ex-sparkline" viewBox="0 0 64 24" preserveAspectRatio="none">
-            <polyline :points="exSparklinePoints(trend.classification).line" fill="none" :stroke="exSparklinePoints(trend.classification).color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <polyline :points="exSparklinePoints(trend.classification).fill" :fill="exSparklinePoints(trend.classification).fillColor" stroke="none"/>
-          </svg>
-          <!-- Badge + feedback -->
-          <div class="ex-right">
-            <div class="shine-btn" :class="exBadgeClass(trend.classification)">
-              <div class="shine-label" x-text="exBadgeLabel(trend.classification)"></div>
+            <div class="ex-meta">
+              <span x-text="trend.confidence + ' conf'"></span>
+              <span style="color:#3a393a">·</span>
+              <span class="ex-score-bar" :title="`Score: ${(trend.weighted_evidence_score || 0).toFixed(1)}`">
+                <template x-for="pip in 5" :key="pip">
+                  <span class="ex-score-pip"
+                    :class="{
+                      'filled': (trend.weighted_evidence_score || 0) / 2 >= pip,
+                      'half':   (trend.weighted_evidence_score || 0) / 2 >= pip - 0.5 && (trend.weighted_evidence_score || 0) / 2 < pip
+                    }"></span>
+                </template>
+              </span>
+              <span x-text="(trend.weighted_evidence_score || 0).toFixed(1)" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#5a5a5e;"></span>
             </div>
-            <div class="pill-feedback">
-              <button class="pf-btn" :class="{ 'pf-liked': exFeedback[trend.headline] === 'relevant' }"
-                @click.stop="submitExFeedback(trend.headline, 'relevant')">👍 Relevant</button>
-              <button class="pf-btn" :class="{ 'pf-disliked': exFeedback[trend.headline] === 'not_relevant' }"
-                @click.stop="submitExFeedback(trend.headline, 'not_relevant')">👎 Not for me</button>
+          </div>
+          <!-- Badge -->
+          <div class="ex-right">
+            <div x-show="exTime === 'week' || exTime === 'month'" class="shine-btn" :class="exBadgeClass(trend.classification)">
+              <div class="shine-label" x-text="exBadgeLabel(trend.classification)"></div>
             </div>
           </div>
           <!-- Expand chevron -->
-          <div style="font-size:12px;color:var(--text3);flex-shrink:0;margin-left:4px;" x-text="exExpanded[trend.headline] ? '▲' : '▼'"></div>
+          <div style="font-size:11px;color:#3a393a;flex-shrink:0;margin-left:2px;" x-text="exExpanded[trend.headline] ? '▲' : '▼'"></div>
+        </div>
+
+        <!-- Feedback — bottom right -->
+        <div style="display:flex;justify-content:flex-end;margin-top:10px;" @click.stop>
+          <div class="pill-feedback">
+            <button class="pf-btn" :class="{ 'pf-liked': exFeedback[trend.headline] === 'relevant' }"
+              :title="exFeedback[trend.headline] === 'relevant' ? 'Marked relevant' : 'Mark as relevant'"
+              @click.stop="submitExFeedback(trend.headline, 'relevant')">👍</button>
+            <button class="pf-btn" :class="{ 'pf-disliked': exFeedback[trend.headline] === 'not_relevant' }"
+              :title="exFeedback[trend.headline] === 'not_relevant' ? 'Marked not for me' : 'Not for me'"
+              @click.stop="submitExFeedback(trend.headline, 'not_relevant')">👎</button>
+          </div>
         </div>
 
         <!-- Expand panel -->
@@ -731,24 +987,54 @@
     <button
       x-show="moreExTrends().length > 0"
       type="button"
-      class="domain-chip chip-inactive"
-      style="align-self:center;margin-top:4px;"
-      @click="showAllTrends = !showAllTrends"
-      x-text="showAllTrends ? 'Show top 3' : `See more (${moreExTrends().length})`">
+      class="see-more-btn"
+      @click.stop="showAllTrends = !showAllTrends"
+      x-text="showAllTrends ? '↑ Show top 3' : `↓ See ${moreExTrends().length} more trend${moreExTrends().length === 1 ? '' : 's'}`">
     </button>
 
     <!-- Report actions -->
     <div class="report-footer">
-      <div class="report-footer-head">
-        <div class="report-footer-title">Share this report</div>
-        <div class="report-footer-meta" x-text="`${filteredExTrends().length} visible trends`"></div>
+
+      <!-- Invite to workspace row -->
+      <div class="footer-section">
+        <div class="footer-section-head">
+          <div class="footer-section-title">Invite to workspace</div>
+        </div>
+        <div class="footer-section-sub">Teammates you invite can track products and see the same trend reports.</div>
+        <div class="share-report" style="margin-top:10px;">
+          <span class="share-report-label">Email</span>
+          <input type="email" x-model="inviteEmail" placeholder="teammate@company.com">
+          <button type="button" class="invite-btn" @click="sendInvite()" :disabled="!inviteEmail">
+            <span x-show="!inviteSent">Send invite →</span>
+            <span x-show="inviteSent">✓ Invite sent</span>
+          </button>
+        </div>
       </div>
-      <div class="share-report">
-        <span class="share-report-label">Send to</span>
-        <input type="email" x-model="shareEmail" placeholder="colleague@company.com">
-        <button type="button" @click="shareReport()">Email report</button>
-        <button type="button" class="secondary" @click="downloadReportCsv()">Download CSV</button>
+
+      <div class="footer-divider"></div>
+
+      <!-- Email digest row -->
+      <div class="footer-section">
+        <div class="footer-section-head">
+          <div class="footer-section-title">📧 Email digest</div>
+        </div>
+        <div class="footer-section-sub">Get your top trends delivered to your inbox. Click once to activate — click again to turn off.</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap;">
+          <div class="digest-chips">
+            <button type="button" class="digest-chip"
+              :class="{ 'digest-active': digestFreq === 'weekly' }"
+              @click="setDigest('weekly')">Weekly</button>
+            <button type="button" class="digest-chip"
+              :class="{ 'digest-active': digestFreq === 'monthly' }"
+              @click="setDigest('monthly')">Monthly</button>
+          </div>
+          <div class="digest-status" :class="{ 'is-on': digestFreq !== 'off' }"
+               x-text="digestFreq === 'weekly'  ? '📬 Sent every Monday' :
+                        digestFreq === 'monthly' ? '📬 Sent on the 1st of each month' :
+                        'Off — no digest scheduled'"></div>
+        </div>
       </div>
+
     </div>
   </div>
 
@@ -770,6 +1056,7 @@
       exDomains: [],
       exMode: 'personalized',
       exTime: 'today',
+      exClassFilter: 'all',
       exTrends: [],
       exLoading: false,
       exFeedback: {},
@@ -779,114 +1066,35 @@
       _toastTimer: null,
       exExpanded: {},
       shareEmail: '',
+      inviteEmail: '',
+      inviteSent: false,
+      digestFreq: 'off',
+      editProfileOpen: false,
+      editProfileDomain: '',
+      editProfileKeywords: '',
+      editProfileSaving: false,
       isNewUser: new URLSearchParams(window.location.search).get('new') === '1',
       signupPollTimer: null,
-      customStartDate: '',
-      customEndDate: '',
-      customDateError: '',
-      domains: [],
-      selected: null,
-      latestTopics: [],
-      prevTopics: [],
-      latestSnap: null,
-      newDomain: '',
-
       async init() {
         await this.initExplorer();
         if (this.isNewUser) this.startSignupPolling();
-      },
-
-      async loadDomains() {
+        // Load current digest preference from user profile
         try {
-          const r = await fetch('/domains');
-          this.domains = await r.json();
-        } catch {}
-      },
-
-      async selectDomain(d) {
-        this.selected = d;
-        this.latestTopics = [];
-        this.prevTopics = [];
-        this.latestSnap = null;
-        try {
-          const r = await fetch(`/history/${encodeURIComponent(d.domain)}?limit=2`);
-          const snaps = await r.json();
-          this.latestSnap = snaps[0] || null;
-          this.latestTopics = (snaps[0]?.topics || []).slice(0, 5);
-          this.prevTopics   = snaps[1]?.topics || [];
-        } catch {}
-      },
-
-      async addDomain() {
-        const d = this.newDomain.trim();
-        if (!d) return;
-        try {
-          const r = await fetch('/domains', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ domain: d }),
-          });
+          const r = await fetch('/me');
           if (r.ok) {
-            this.newDomain = '';
-            await this.loadDomains();
-            const added = this.domains.find(x => x.domain === d.toLowerCase());
-            if (added) await this.selectDomain(added);
+            const me = await r.json();
+            this.digestFreq = me.digest_frequency || 'off';
           }
-        } catch {}
-      },
-
-      topicStatus(topic) {
-        if (!this.prevTopics.length) return 'NEW';
-        const prev = this.prevTopics.find(p =>
-          p.canonical_topic_id && p.canonical_topic_id === topic.canonical_topic_id
-        );
-        if (!prev) return 'NEW';
-        const delta = (prev.rank || 99) - (topic.rank || 99);
-        if (delta >= 2) return 'SPIKING';
-        if (delta <= -2) return 'DECLINING';
-        return 'STABLE';
-      },
-
-      topicLabel(topic) {
-        return { NEW: 'NEW', SPIKING: '↑ SPIKING', DECLINING: '↓ DECLINING', STABLE: 'STABLE' }[this.topicStatus(topic)] || '';
-      },
-
-      statusCls(status) {
-        return { NEW: 'db-new', SPIKING: 'db-spiking', DECLINING: 'db-declining', STABLE: 'db-stable' }[status] || 'db-stable';
-      },
-
-      get dontMiss() {
-        if (!this.latestTopics.length) return null;
-        return [...this.latestTopics].sort((a, b) =>
-          (b.weighted_evidence_score || 0) - (a.weighted_evidence_score || 0)
-        )[0];
-      },
-
-      dotCls(status) {
-        return { done: 'd-done', running: 'd-running', error: 'd-error', pending: 'd-pending' }[status] || 'd-pending';
-      },
-
-      lastRunLabel() {
-        if (!this.latestSnap) return 'No runs yet';
-        const h = Math.floor((Date.now() - new Date(this.latestSnap.created_at)) / 3600000);
-        if (h < 1) return 'Last run: just now';
-        if (h === 1) return 'Last run: 1 hour ago';
-        if (h < 24) return `Last run: ${h} hours ago`;
-        return `Last run: ${Math.floor(h / 24)} day(s) ago`;
+        } catch(e) { /* non-fatal — default stays 'off' */ }
       },
 
       async initExplorer() {
         if (this.exDomains.length === 0) {
-          // Reuse domains already loaded by init() — avoid a second network request
-          this.exDomains = this.domains.map(d => d.domain);
-          if (this.exDomains.length === 0) {
-            // Domains not yet loaded — fetch them
-            try {
-              const r = await fetch('/domains');
-              const data = await r.json();
-              this.exDomains = data.map(d => d.domain);
-            } catch(e) { console.error('Explorer domains failed', e); }
-          }
+          try {
+            const r = await fetch('/domains');
+            const data = await r.json();
+            this.exDomains = data.map(d => d.domain);
+          } catch(e) { console.error('Explorer domains failed', e); }
           if (this.exDomains.length > 0 && !this.exDomain) {
             this.exDomain = this.exDomains[0];
             await this.loadExTrends();
@@ -896,13 +1104,14 @@
 
       startSignupPolling() {
         if (this.signupPollTimer) return;
-        this.signupPollTimer = setInterval(() => {
+        this.signupPollTimer = setInterval(async () => {
           if (!this.isNewUser) {
             clearInterval(this.signupPollTimer);
             this.signupPollTimer = null;
             return;
           }
-          this.loadExTrends({ silent: true });
+          await this.loadExTrends({ silent: true });
+          if (this.exTrends.length > 0) this.dismissSignupProgress();
         }, 8000);
         setTimeout(() => {
           if (this.signupPollTimer) {
@@ -923,6 +1132,42 @@
         window.history.replaceState({}, '', url.pathname + url.search);
       },
 
+      async saveEditedProfile() {
+        const domain = this.editProfileDomain.trim().toLowerCase();
+        if (!domain || this.editProfileSaving) return;
+        this.editProfileSaving = true;
+        try {
+          const keywords = this.editProfileKeywords.split(',').map(k => k.trim()).filter(Boolean);
+          // Ensure domain is tracked
+          await fetch('/domains', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domain }),
+          });
+          // Update product profile with keywords as context
+          await fetch(`/profile/${encodeURIComponent(domain)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              product_description: keywords.join(', '),
+              product_stage: '', customer_segment: '', tech_stack: [],
+              pm_role: '', pm_focus: '', user_pain_points: [],
+              competitors: [], target_users: '', geographic_market: '',
+            }),
+          });
+          if (!this.exDomains.includes(domain)) this.exDomains = [...this.exDomains, domain];
+          this.exDomain = domain;
+          this.exClassFilter = 'all';
+          this.editProfileOpen = false;
+          this.showToast('Product updated.');
+          await this.loadExTrends();
+        } catch (e) {
+          this.showToast('Could not save: ' + (e.message || 'unknown error'));
+        } finally {
+          this.editProfileSaving = false;
+        }
+      },
+
       todayIsoDate() {
         return new Date().toISOString().slice(0, 10);
       },
@@ -937,13 +1182,6 @@
         return this.todayIsoDate();
       },
 
-      selectCustomDates() {
-        this.exTime = 'custom';
-        this.customDateError = '';
-        if (!this.customEndDate) this.customEndDate = this.todayIsoDate();
-        if (!this.customStartDate) this.customStartDate = this.daysAgoIsoDate(7);
-      },
-
       trendsForSelectedRange(snapshots) {
         if (!snapshots || snapshots.length === 0) return [];
 
@@ -951,36 +1189,49 @@
           return snapshots[0].topics || [];
         }
 
-        if (this.exTime === 'yesterday') {
-          const today = this.todayIsoDate();
-          const previous = snapshots.find(s => (s.created_at || '').slice(0, 10) < today);
-          return (previous || snapshots[1] || snapshots[0]).topics || [];
-        }
-
+        // snapshots are newest-first; track each headline's score in newest vs oldest snapshot
+        const newestScores = new Map();
+        const oldestScores = new Map();
         const byHeadline = new Map();
-        const classPriority = {
-          'SPIKING VS LAST RUN': 4,
-          'NEW THIS RUN': 3,
-          'DECLINING': 2,
-          'STABLE BUT IMPORTANT': 1,
-          'WEAK SIGNAL TO WATCH': 0,
-        };
 
-        snapshots.forEach(snapshot => {
+        // newest snapshot first → record first occurrence as "newest score"
+        // iterate reversed for oldest score
+        snapshots.forEach((snapshot, si) => {
           (snapshot.topics || []).forEach(topic => {
-            const existing = byHeadline.get(topic.headline);
+            const h = topic.headline;
+            const score = topic.weighted_evidence_score || 0;
+            if (!newestScores.has(h)) newestScores.set(h, score);
+            oldestScores.set(h, score); // overwritten each time → ends up as oldest
+            const existing = byHeadline.get(h);
             if (!existing) {
-              byHeadline.set(topic.headline, { ...topic });
-              return;
-            }
-            if ((topic.weighted_evidence_score || 0) > (existing.weighted_evidence_score || 0)) {
+              byHeadline.set(h, { ...topic });
+            } else if (score > (existing.weighted_evidence_score || 0)) {
               Object.assign(existing, topic);
-            }
-            if ((classPriority[topic.classification] ?? 0) > (classPriority[existing.classification] ?? 0)) {
-              existing.classification = topic.classification;
             }
           });
         });
+
+        // Derive classification from proportional score change when delta not stored.
+        // Mirrors the backend thresholds: spike >= +40%, decline <= -30%.
+        for (const [h, entry] of byHeadline) {
+          const hasStoredCls = entry.classification && entry.classification !== 'STABLE BUT IMPORTANT';
+          if (!hasStoredCls && snapshots.length > 1) {
+            const newest = newestScores.get(h) || 0;
+            const oldest = oldestScores.get(h);
+            if (oldest === undefined) {
+              entry.classification = 'NEW THIS RUN';
+            } else if (oldest === 0) {
+              entry.classification = 'STABLE BUT IMPORTANT';
+            } else {
+              const pct = (newest - oldest) / oldest;
+              if (pct >= 0.40)       entry.classification = 'SPIKING VS LAST RUN';
+              else if (pct <= -0.30) entry.classification = 'DECLINING';
+              else                   entry.classification = 'STABLE BUT IMPORTANT';
+            }
+          } else if (!entry.classification) {
+            entry.classification = 'STABLE BUT IMPORTANT';
+          }
+        }
 
         return [...byHeadline.values()]
           .sort((a, b) => (b.weighted_evidence_score || 0) - (a.weighted_evidence_score || 0))
@@ -994,28 +1245,9 @@
           this.exExpanded = {};
           this.showAllTrends = false;
         }
-        const days = this.exTime === 'yesterday' ? 2
-                   : this.exTime === 'today' ? 1
-                   : this.exTime === 'week' ? 7 : 30;
-        let timelineUrl = `/history/${encodeURIComponent(this.exDomain)}/timeline?days=${days}`;
-        if (this.exTime === 'custom') {
-          if (!this.customStartDate || !this.customEndDate) {
-            this.customDateError = 'Choose both dates.';
-            if (!options.silent) this.exLoading = false;
-            return;
-          }
-          if (this.customStartDate > this.customEndDate) {
-            this.customDateError = 'Start must be before end.';
-            if (!options.silent) this.exLoading = false;
-            return;
-          }
-          this.customDateError = '';
-          const params = new URLSearchParams({
-            start_date: this.customStartDate,
-            end_date: this.customEndDate,
-          });
-          timelineUrl = `/history/${encodeURIComponent(this.exDomain)}/timeline?${params.toString()}`;
-        }
+        const days = this.exTime === 'month' ? 30
+                   : this.exTime === 'week' ? 7 : 1;
+        const timelineUrl = `/history/${encodeURIComponent(this.exDomain)}/timeline?days=${days}`;
         try {
           const r = await fetch(timelineUrl);
           if (!r.ok) throw new Error(await r.text());
@@ -1046,23 +1278,26 @@
 
       exSparklinePoints(classification) {
         const cls = this.exBadgeClass(classification);
-        if (cls === 'shine-spiking')   return { line: '0,20 16,15 32,10 48,5 64,2', fill: '0,20 16,15 32,10 48,5 64,2 64,24 0,24', color: '#22c55e', fillColor: 'rgba(34,197,94,0.08)' };
-        if (cls === 'shine-declining') return { line: '0,4 16,8 32,12 48,17 64,22', fill: '0,4 16,8 32,12 48,17 64,22 64,24 0,24', color: '#ef4444', fillColor: 'rgba(239,68,68,0.08)' };
-        return { line: '0,12 16,13 32,11 48,12 64,11', fill: '0,12 16,13 32,11 48,12 64,11 64,24 0,24', color: '#f59e0b', fillColor: 'rgba(245,158,11,0.08)' };
+        // viewBox is now 80x32
+        if (cls === 'shine-spiking')   return { line: '0,18 15,14 30,9 45,4 60,1',  color: '#22c55e' };
+        if (cls === 'shine-declining') return { line: '0,2  15,5  30,10 45,15 60,18', color: '#ef4444' };
+        return { line: '0,10 15,11 30,9 45,10 60,10', color: '#f59e0b' };
       },
 
       filteredExTrends() {
-        const trends = this.exMode === 'general'
-          ? this.exTrends
-          : this.exTrends.filter(t => this.exFeedback[t.headline] !== 'not_relevant');
+        let trends = this.exTrends.filter(t => this.exFeedback[t.headline] !== 'not_relevant');
+        if (this.exClassFilter !== 'all') {
+          trends = trends.filter(t => this.exBadgeClass(t.classification) === `shine-${this.exClassFilter}`);
+        }
         if (this.showAllTrends) return trends;
         return this.demoTopThree(trends);
       },
 
       moreExTrends() {
-        const trends = this.exMode === 'general'
-          ? this.exTrends
-          : this.exTrends.filter(t => this.exFeedback[t.headline] !== 'not_relevant');
+        let trends = this.exTrends.filter(t => this.exFeedback[t.headline] !== 'not_relevant');
+        if (this.exClassFilter !== 'all') {
+          trends = trends.filter(t => this.exBadgeClass(t.classification) === `shine-${this.exClassFilter}`);
+        }
         const top = new Set(this.demoTopThree(trends).map(t => t.headline));
         return trends.filter(t => !top.has(t.headline));
       },
@@ -1109,9 +1344,8 @@
 
       shareReport() {
         const trends = this.filteredExTrends();
-        const modeLabel = this.exTime === 'week' ? 'This Week'
-          : this.exTime === 'custom' ? `${this.customStartDate} to ${this.customEndDate}`
-          : this.exTime.charAt(0).toUpperCase() + this.exTime.slice(1);
+        const modeLabel = this.exTime === 'month' ? 'This Month'
+          : this.exTime === 'week' ? 'This Week' : 'Today';
         const trendText = trends.map((trend, idx) => [
           `${idx + 1}. ${trend.headline}`,
           trend.what_happened ? `What happened: ${trend.what_happened}` : '',
@@ -1121,13 +1355,46 @@
         const subject = encodeURIComponent('TrendLens Report: ' + this.exDomain);
         const body = encodeURIComponent(
           `Thought you should see this TrendLens report.\n\n` +
-          `Domain: ${this.exDomain}\n` +
+          `Product: ${this.exDomain}\n` +
           `Range: ${modeLabel}\n\n` +
           `${trendText}\n\n` +
           'Sent via TrendLens'
         );
         const to = this.shareEmail ? encodeURIComponent(this.shareEmail) : '';
         window.location.href = 'mailto:' + to + '?subject=' + subject + '&body=' + body;
+      },
+
+      async setDigest(freq) {
+        // Clicking the active chip toggles it off
+        const next = this.digestFreq === freq ? 'off' : freq;
+        try {
+          const r = await fetch('/me', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ digest_frequency: next }),
+          });
+          if (!r.ok) throw new Error('Server error ' + r.status);
+          this.digestFreq = next;
+          if (next === 'weekly')  this.showToast('📧 Weekly digest on — see you every Monday!');
+          else if (next === 'monthly') this.showToast('📧 Monthly digest on — see you the 1st!');
+          else                    this.showToast('Email digest turned off.');
+        } catch(e) {
+          this.showToast('Could not save digest preference — try again.');
+        }
+      },
+
+      sendInvite() {
+        if (!this.inviteEmail) return;
+        const subject = encodeURIComponent('Join me on TrendLens');
+        const body = encodeURIComponent(
+          `Hey,\n\nI've been using TrendLens to track trends for my product and thought you'd find it useful.\n\n` +
+          `It surfaces the top 3 trends that actually matter — from Reddit, Hacker News, podcasts, and the web — so you don't have to dig through everything yourself.\n\n` +
+          `Sign up here: ${window.location.origin}/signup.html\n\nSee you there!`
+        );
+        window.location.href = `mailto:${encodeURIComponent(this.inviteEmail)}?subject=${subject}&body=${body}`;
+        this.inviteSent = true;
+        this.inviteEmail = '';
+        setTimeout(() => { this.inviteSent = false; }, 3000);
       },
 
       downloadReportCsv() {
@@ -1229,7 +1496,7 @@
 
   async function saveProfile() {
     const domain = document.getElementById("domain").value.trim();
-    if (!domain) { alert("Enter a domain first."); return; }
+    if (!domain) { alert("Enter a product first."); return; }
     const btn = document.getElementById("profileSaveBtn");
     const msg = document.getElementById("profileSaveMsg");
     btn.disabled = true;
@@ -1311,7 +1578,7 @@
 
   function renderBaselineBanner(report) {
     if (report.is_baseline) {
-      return `<div class="delta-baseline"><strong>No prior history for this domain</strong> — this run is saved as your baseline. Run again later and you'll see what changed.</div>`;
+      return `<div class="delta-baseline"><strong>No prior history for this product</strong> — this run is saved as your baseline. Run again later and you'll see what changed.</div>`;
     }
     if (report.delta_unavailable_reason) {
       return `<div class="delta-baseline">${report.delta_unavailable_reason}</div>`;

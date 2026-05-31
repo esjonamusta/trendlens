@@ -86,6 +86,13 @@ class Settings(BaseSettings):
     # Cosine similarity threshold when similarity_method = "embeddings"
     embed_match_threshold: float = 0.65
 
+    # ── Email / SMTP ─────────────────────────────────────────────────────────────
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    email_from: str = ""   # defaults to smtp_user if blank
+
     # ── Storage ──────────────────────────────────────────────────────────────────
     history_db_path: str = "history.db"  # override with /data/history.db in Docker
 
