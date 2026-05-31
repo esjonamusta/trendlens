@@ -18,7 +18,6 @@ from app.services.trend_engine import (
     normalize_for_clustering,
     novelty_score,
     rank_clusters,
-    source_quality_weight,
 )
 
 
@@ -580,7 +579,6 @@ def test_cluster_freshness_score_averages_sources():
 # ── Novelty scoring ───────────────────────────────────────────────────────────
 
 def test_novelty_no_history_returns_1():
-    from app.core.schemas import TopicSnapshot
     assert novelty_score(frozenset({"mcp", "developer", "tools"}), []) == 1.0
 
 

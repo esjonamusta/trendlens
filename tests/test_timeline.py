@@ -1,7 +1,15 @@
 from __future__ import annotations
-import json, pytest
+
+import json
+import sqlite3
 from datetime import datetime, timezone
+
+from fastapi.testclient import TestClient
+
 from app.db import history as history_db
+from main import app
+
+client = TestClient(app)
 
 
 TOPIC_A = {
@@ -34,7 +42,6 @@ def test_get_timeline_returns_snapshots_with_topics(tmp_path, monkeypatch):
     monkeypatch.setattr(history_db, "DB_PATH", db_file)
     history_db.init_db()
 
-    import sqlite3
     conn = sqlite3.connect(db_file)
     conn.execute(
         "INSERT INTO snapshots (run_id, domain, config_json, report_json, topics_json, created_at) VALUES (?,?,?,?,?,?)",
@@ -60,7 +67,6 @@ def test_get_timeline_filters_by_days(tmp_path, monkeypatch):
     monkeypatch.setattr(history_db, "DB_PATH", db_file)
     history_db.init_db()
 
-    import sqlite3
     conn = sqlite3.connect(db_file)
     conn.execute(
         "INSERT INTO snapshots (run_id, domain, config_json, report_json, topics_json, created_at) VALUES (?,?,?,?,?,?)",
@@ -84,7 +90,6 @@ def test_get_timeline_filters_by_date_range(tmp_path, monkeypatch):
     monkeypatch.setattr(history_db, "DB_PATH", db_file)
     history_db.init_db()
 
-    import sqlite3
     conn = sqlite3.connect(db_file)
     conn.execute(
         "INSERT INTO snapshots (run_id, domain, config_json, report_json, topics_json, created_at) VALUES (?,?,?,?,?,?)",
@@ -108,13 +113,6 @@ def test_get_timeline_filters_by_date_range(tmp_path, monkeypatch):
     )
     assert len(result) == 1
     assert result[0]["run_id"] == "inside"
-
-
-from fastapi.testclient import TestClient
-from main import app
-import sqlite3
-
-client = TestClient(app)
 
 
 def test_timeline_endpoint_returns_200(tmp_path, monkeypatch):
